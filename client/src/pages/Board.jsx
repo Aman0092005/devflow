@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Avatar } from '../ui.jsx';
+import { getSocket } from '../socket.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
 const byPos = (a, b) => a.position - b.position || a.id - b.id;
@@ -29,11 +30,59 @@ export default function Board() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMsg, setInviteMsg] = useState(null);
   const [error, setError] = useState('');
+  const [online, setOnline] = useState([]);
+  const [live, setLive] = useState(false);
+  const [flashIds, setFlashIds] = useState(new Set());
 
   useEffect(() => {
     Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
       .then(([p, t, m]) => { setProject(p); setTasks(t); setMembers(m); })
       .catch((e) => setError(e.message));
+  }, [id]);
+
+  const flash = (taskId) => {
+    setFlashIds((s) => new Set(s).add(taskId));
+    setTimeout(() => setFlashIds((s) => { const n = new Set(s); n.delete(taskId); return n; }), 1600);
+  };
+
+  useEffect(() => {
+    const s = getSocket();
+    let first = true;
+    const join = () => {
+      setLive(true);
+      s.emit('project:join', Number(id));
+      if (!first) {
+        // Reconnected: catch up on anything missed while offline.
+        Promise.all([api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
+          .then(([t, m]) => { setTasks(t); setMembers(m); }).catch(() => {});
+      }
+      first = false;
+    };
+    const onDisconnect = () => setLive(false);
+    const handlers = {
+      'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
+      'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? task : t))); flash(task.id); },
+      'task:deleted': ({ id: taskId }) => setTasks((p) => p.filter((t) => t.id !== taskId)),
+      'tasks:reordered': ({ tasks: all, movedId }) => { setTasks(all); flash(movedId); },
+      'member:added': ({ member }) => setMembers((p) => (p.some((m) => m.id === member.id) ? p : [...p, member])),
+      'member:removed': ({ userId }) => {
+        if (userId === user.id) return navigate('/projects');
+        setMembers((p) => p.filter((m) => m.id !== userId));
+        setTasks((p) => p.map((t) => (t.assignee_id === userId ? { ...t, assignee_id: null } : t)));
+      },
+      'project:deleted': () => navigate('/projects'),
+      presence: (ids) => setOnline(ids),
+    };
+    s.on('connect', join);
+    s.on('disconnect', onDisconnect);
+    Object.entries(handlers).forEach(([e, h]) => s.on(e, h));
+    if (s.connected) join();
+    return () => {
+      s.emit('project:leave', Number(id));
+      s.off('connect', join);
+      s.off('disconnect', onDisconnect);
+      Object.entries(handlers).forEach(([e, h]) => s.off(e, h));
+    };
   }, [id]);
 
   const isOwner = project?.role === 'owner';
@@ -107,12 +156,15 @@ export default function Board() {
           <h1><i className="dot big" style={{ background: project.color }} />{project.name}</h1>
           {project.description && <p className="muted lead">{project.description}</p>}
         </div>
-        <button className="team-btn" onClick={() => setShowTeam((s) => !s)} aria-expanded={showTeam}>
+        <div className="head-right">
+          <span className={`live ${live ? 'on' : ''}`} role="status">{live ? `Live · ${online.length} online` : 'Reconnecting…'}</span>
+          <button className="team-btn" onClick={() => setShowTeam((s) => !s)} aria-expanded={showTeam}>
           <span className="avatar-stack">
             {members.slice(0, 4).map((m) => <Avatar key={m.id} name={m.name} id={m.id} size={26} />)}
           </span>
           Team · {members.length}
         </button>
+        </div>
       </div>
 
       {showTeam && (
@@ -121,7 +173,7 @@ export default function Board() {
           <ul className="member-list">
             {members.map((m) => (
               <li key={m.id}>
-                <Avatar name={m.name} id={m.id} />
+                <span className="av-wrap"><Avatar name={m.name} id={m.id} />{online.includes(m.id) && <i className="online-dot" title="Online" />}</span>
                 <div className="grow"><b>{m.name}{m.id === user.id && ' (you)'}</b><div className="muted">{m.email}</div></div>
                 <span className={`badge ${m.role}`}>{m.role === 'owner' ? 'Owner' : 'Member'}</span>
                 {m.role !== 'owner' && (isOwner || m.id === user.id) &&
@@ -168,7 +220,7 @@ export default function Board() {
                 const a = memberById[t.assignee_id];
                 return (
                   <article key={t.id} draggable
-                    className={`task p-${t.priority} ${dragId === t.id ? 'dragging' : ''}`}
+                    className={`task p-${t.priority} ${dragId === t.id ? 'dragging' : ''} ${flashIds.has(t.id) ? 'flash' : ''}`}
                     onDragStart={() => setDragId(t.id)}
                     onDragEnd={() => { setDragId(null); setOverCol(null); }}
                     onDrop={(e) => {

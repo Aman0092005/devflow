@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool, query } from '../db.js';
 import { getRole } from '../access.js';
+import { emitToProject } from '../socket.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
@@ -37,6 +38,7 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
        RETURNING *`,
       [projectId, title.trim(), description, priority, due_date || null, assignee_id || null]
     );
+    emitToProject(projectId, 'task:created', { task: rows[0] }, req.get('x-socket-id'));
     res.status(201).json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -59,6 +61,7 @@ router.patch('/tasks/:id', async (req, res, next) => {
       [req.params.id, title, description, priority, due_date || null, 'due_date' in req.body,
        assignee_id || null, 'assignee_id' in req.body]
     );
+    emitToProject(task.project_id, 'task:updated', { task: rows[0] }, req.get('x-socket-id'));
     res.json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -83,6 +86,8 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     for (let i = 0; i < ids.length; i++)
       await client.query('UPDATE tasks SET position=$2 WHERE id=$1', [ids[i], i]);
     await client.query('COMMIT');
+    const all = await query('SELECT * FROM tasks WHERE project_id=$1 ORDER BY status, position, id', [task.project_id]);
+    emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
@@ -94,9 +99,10 @@ router.post('/tasks/:id/move', async (req, res, next) => {
 
 router.delete('/tasks/:id', async (req, res, next) => {
   try {
-    if (!(await loadTask(req.params.id, req.userId)))
-      return res.status(404).json({ error: 'Task not found.' });
+    const task = await loadTask(req.params.id, req.userId);
+    if (!task) return res.status(404).json({ error: 'Task not found.' });
     await query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
+    emitToProject(task.project_id, 'task:deleted', { id: task.id }, req.get('x-socket-id'));
     res.status(204).end();
   } catch (e) { next(e); }
 });

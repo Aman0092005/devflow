@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { getRole } from '../access.js';
+import { emitToProject, removeUserFromProject } from '../socket.js';
 
 const router = Router();
 
@@ -31,7 +32,9 @@ router.post('/projects/:projectId/members', async (req, res, next) => {
     if (await getRole(projectId, user.id)) return res.status(409).json({ error: `${user.name} is already on this project.` });
 
     await query('INSERT INTO project_members (project_id, user_id, role) VALUES ($1,$2,\'member\')', [projectId, user.id]);
-    res.status(201).json({ ...user, role: 'member' });
+    const member = { ...user, role: 'member' };
+    emitToProject(projectId, 'member:added', { member }, req.get('x-socket-id'));
+    res.status(201).json(member);
   } catch (e) { next(e); }
 });
 
@@ -50,6 +53,8 @@ router.delete('/projects/:projectId/members/:userId', async (req, res, next) => 
 
     await query('DELETE FROM project_members WHERE project_id=$1 AND user_id=$2', [projectId, targetId]);
     await query('UPDATE tasks SET assignee_id = NULL WHERE project_id=$1 AND assignee_id=$2', [projectId, targetId]);
+    emitToProject(projectId, 'member:removed', { userId: targetId }, req.get('x-socket-id'));
+    removeUserFromProject(projectId, targetId);
     res.status(204).end();
   } catch (e) { next(e); }
 });

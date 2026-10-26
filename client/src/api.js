@@ -1,3 +1,5 @@
+import { getSocketId } from './socket.js';
+
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
 export async function api(path, { method = 'GET', body } = {}) {
@@ -6,6 +8,7 @@ export async function api(path, { method = 'GET', body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...(getSocketId() ? { 'X-Socket-Id': getSocketId() } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,

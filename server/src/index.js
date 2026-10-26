@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,6 +12,7 @@ import noteRoutes from './routes/notes.js';
 import dashboardRoutes from './routes/dashboard.js';
 import dsaRoutes from './routes/dsa.js';
 import memberRoutes from './routes/members.js';
+import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
 
@@ -35,4 +37,6 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`DevFlow API on http://localhost:${port}`));
+const server = http.createServer(app);
+initSocket(server);
+server.listen(port, () => console.log(`DevFlow API on http://localhost:${port}`));

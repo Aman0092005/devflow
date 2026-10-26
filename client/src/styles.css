@@ -136,3 +136,16 @@ table.dsa { width: 100%; border-collapse: collapse; }
 .task, .project, .note-item { transition: border-color .15s, transform .15s; }
 .task:hover { border-color: var(--muted); }
 .project:hover { transform: translateY(-2px); }
+
+/* Phase 2: realtime */
+.head-right { display: flex; flex-direction: column; align-items: flex-end; gap: .45rem; }
+.live { font-size: .8rem; color: var(--chalk); }
+.live::before { content: ''; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; margin-right: .4rem; }
+.live.on { color: var(--green); }
+.av-wrap { position: relative; display: inline-flex; }
+.online-dot { position: absolute; right: -1px; bottom: -1px; width: .65rem; height: .65rem; border-radius: 50%; background: var(--green); border: 2px solid var(--panel); }
+.task.flash { animation: flash 1.6s ease-out; }
+@keyframes flash {
+  0% { box-shadow: 0 0 0 2px var(--chalk); background: #243417; }
+  100% { box-shadow: 0 0 0 2px transparent; background: var(--bg); }
+}
