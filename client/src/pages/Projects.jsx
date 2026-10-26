@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { getSocket } from '../socket.js';
 
 const COLORS = ['#f5d547', '#7ab8ff', '#6fd3a0', '#ff9b85', '#c9a7ff'];
 
@@ -13,6 +14,12 @@ export default function Projects() {
 
   const load = () => api('/projects').then(setProjects).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const s = getSocket();
+    const onNote = (n) => { if (n.type === 'added_to_project') load(); };
+    s.on('notification', onNote);
+    return () => s.off('notification', onNote);
+  }, []);
 
   const create = async (e) => {
     e.preventDefault();

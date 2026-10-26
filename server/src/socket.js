@@ -58,6 +58,10 @@ export function emitToProject(projectId, event, payload, exceptSocketId) {
   target.emit(event, payload);
 }
 
+export function emitToUser(userId, event, payload) {
+  io?.to(`user:${userId}`).emit(event, payload);
+}
+
 export function removeUserFromProject(projectId, userId) {
   io?.in(`user:${userId}`).socketsLeave(room(projectId));
 }

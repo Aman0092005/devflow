@@ -69,3 +69,15 @@ CREATE INDEX IF NOT EXISTS pm_user_idx ON project_members(user_id);
 INSERT INTO project_members (project_id, user_id, role)
   SELECT id, owner_id, 'owner' FROM projects ON CONFLICT DO NOTHING;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_id INT REFERENCES users(id) ON DELETE SET NULL;
+
+-- Phase 2, step 3: notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  project_id INT REFERENCES projects(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, is_read, created_at DESC);

@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { pool, query } from '../db.js';
 import { getRole } from '../access.js';
 import { emitToProject } from '../socket.js';
+import { notify } from '../notify.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
+const LABELS = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
 
 const loadTask = async (taskId, userId) =>
   (await query(
@@ -39,6 +41,7 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
       [projectId, title.trim(), description, priority, due_date || null, assignee_id || null]
     );
     emitToProject(projectId, 'task:created', { task: rows[0] }, req.get('x-socket-id'));
+    if (assignee_id) await notify({ userId: assignee_id, actorId: req.userId, projectId: Number(projectId), type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.status(201).json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -62,6 +65,8 @@ router.patch('/tasks/:id', async (req, res, next) => {
        assignee_id || null, 'assignee_id' in req.body]
     );
     emitToProject(task.project_id, 'task:updated', { task: rows[0] }, req.get('x-socket-id'));
+    if (assignee_id && Number(assignee_id) !== task.assignee_id)
+      await notify({ userId: assignee_id, actorId: req.userId, projectId: task.project_id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -88,6 +93,8 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     await client.query('COMMIT');
     const all = await query('SELECT * FROM tasks WHERE project_id=$1 ORDER BY status, position, id', [task.project_id]);
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
+    if (task.assignee_id && status !== task.status)
+      await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});

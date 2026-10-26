@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { getRole } from '../access.js';
 import { emitToProject, removeUserFromProject } from '../socket.js';
+import { notify } from '../notify.js';
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.post('/projects/:projectId/members', async (req, res, next) => {
     await query('INSERT INTO project_members (project_id, user_id, role) VALUES ($1,$2,\'member\')', [projectId, user.id]);
     const member = { ...user, role: 'member' };
     emitToProject(projectId, 'member:added', { member }, req.get('x-socket-id'));
+    await notify({ userId: user.id, actorId: req.userId, projectId: Number(projectId), type: 'added_to_project', text: 'added you to the project' });
     res.status(201).json(member);
   } catch (e) { next(e); }
 });

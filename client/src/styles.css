@@ -149,3 +149,26 @@ table.dsa { width: 100%; border-collapse: collapse; }
   0% { box-shadow: 0 0 0 2px var(--chalk); background: #243417; }
   100% { box-shadow: 0 0 0 2px transparent; background: var(--bg); }
 }
+
+/* Phase 2: notifications */
+.brand-row { display: flex; align-items: center; justify-content: space-between; }
+.bell-wrap { position: relative; }
+.bell { position: relative; display: inline-flex; background: none; border: 1px solid transparent; color: var(--muted); border-radius: 6px; padding: .35rem; cursor: pointer; }
+.bell:hover, .bell[aria-expanded=true] { color: var(--text); border-color: var(--line); }
+.bell-count { position: absolute; top: -4px; right: -4px; min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem; border-radius: 99px; background: var(--chalk); color: #14213a; font: 700 .7rem/1.1rem var(--body); text-align: center; }
+.notif-panel { position: absolute; top: calc(100% + .5rem); left: 0; width: min(340px, 86vw); max-height: 70vh; overflow-y: auto; z-index: 50; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.notif-head { padding: .75rem 1rem; border-bottom: 1px solid var(--line); }
+.notif-head h2 { margin: 0; font-size: 1rem; }
+.notif-head .link:disabled { opacity: .4; cursor: default; text-decoration: none; }
+.notif-empty { padding: 1.25rem 1rem; margin: 0; }
+.notif-list { list-style: none; margin: 0; padding: 0; }
+.notif { display: flex; gap: .65rem; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); color: var(--muted); font: inherit; padding: .7rem 1rem; cursor: pointer; }
+.notif-list li:first-child .notif { border-top: 0; }
+.notif:hover { background: rgba(255,255,255,.04); }
+.notif .grow { display: flex; flex-direction: column; gap: .1rem; }
+.notif-msg { font-size: .92rem; }
+.notif.unread { color: var(--text); }
+.notif-dot { width: .55rem; height: .55rem; border-radius: 50%; margin-top: .4rem; flex: none; background: transparent; }
+.notif.unread .notif-dot { background: var(--chalk); }
+.toast { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60; max-width: 340px; display: flex; flex-direction: column; gap: .15rem; text-align: left; background: var(--panel); color: var(--text); font: inherit; border: 1px solid var(--chalk); border-left-width: 4px; border-radius: 6px; padding: .75rem 1rem; cursor: pointer; box-shadow: 0 12px 32px rgba(0,0,0,.45); animation: toast-in .25s ease-out; }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }

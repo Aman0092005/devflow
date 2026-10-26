@@ -6,6 +6,7 @@ import Projects from './pages/Projects.jsx';
 import Board from './pages/Board.jsx';
 import Notes from './pages/Notes.jsx';
 import Dsa from './pages/Dsa.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
   const { user, loading, logout } = useAuth();
@@ -14,7 +15,7 @@ function Shell() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">DevFlow</div>
+        <div className="brand-row"><div className="brand">DevFlow</div><NotificationBell /></div>
         <nav>
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/projects">Projects</NavLink>
