@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import SearchPalette from './SearchPalette.jsx';
 import { useAuth } from './auth.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -10,12 +12,21 @@ import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
   const { user, loading, logout } = useAuth();
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen((o) => !o); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
   if (loading) return <p className="center-note">Loading your workspace…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand-row"><div className="brand">DevFlow</div><NotificationBell /></div>
+        <button className="search-btn" onClick={() => setSearchOpen(true)}>Search <kbd>Ctrl K</kbd></button>
         <nav>
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/projects">Projects</NavLink>
@@ -28,6 +39,7 @@ function Shell() {
         </div>
       </aside>
       <main className="main"><Outlet /></main>
+      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

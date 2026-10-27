@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Avatar } from '../ui.jsx';
 import { getSocket } from '../socket.js';
 import TaskModal from '../TaskModal.jsx';
+import { addDays, fmtDate, today } from '../dates.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
 const byPos = (a, b) => a.position - b.position || a.id - b.id;
@@ -21,6 +22,7 @@ export default function Board() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
@@ -35,12 +37,18 @@ export default function Board() {
   const [live, setLive] = useState(false);
   const [flashIds, setFlashIds] = useState(new Set());
   const [openTaskId, setOpenTaskId] = useState(null);
+  const [filters, setFilters] = useState({ q: '', assignee: '', priority: '', due: '' });
 
   useEffect(() => {
     Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
       .then(([p, t, m]) => { setProject(p); setTasks(t); setMembers(m); })
       .catch((e) => setError(e.message));
   }, [id]);
+
+  // Opened from the global search: jump straight to the task.
+  useEffect(() => {
+    if (project && location.state?.openTask) setOpenTaskId(location.state.openTask);
+  }, [!!project, location.key]);
 
   const flash = (taskId) => {
     setFlashIds((s) => new Set(s).add(taskId));
@@ -90,6 +98,23 @@ export default function Board() {
 
   const isOwner = project?.role === 'owner';
   const openTask = tasks.find((t) => t.id === openTaskId);
+
+  const filtersOn = Object.values(filters).some(Boolean);
+  const matches = (t) => {
+    const q = filters.q.trim().toLowerCase();
+    if (q && !t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
+    if (filters.priority && t.priority !== filters.priority) return false;
+    if (filters.assignee === 'me' && t.assignee_id !== user.id) return false;
+    if (filters.assignee === 'none' && t.assignee_id) return false;
+    if (/^\d+$/.test(filters.assignee) && t.assignee_id !== Number(filters.assignee)) return false;
+    if (filters.due) {
+      const d = t.due_date?.slice(0, 10);
+      if (!d || t.status === 'done') return false;
+      if (filters.due === 'overdue' && d >= today()) return false;
+      if (filters.due === 'week' && (d < today() || d > addDays(today(), 7))) return false;
+    }
+    return true;
+  };
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
 
   const addTask = async (e) => {
@@ -209,17 +234,43 @@ export default function Board() {
       </form>
       {error && <p className="error" role="alert">{error}</p>}
 
+      <div className="filters" role="search" aria-label="Filter tasks">
+        <input placeholder="Filter tasks by title or description" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
+        <select value={filters.assignee} onChange={(e) => setFilters({ ...filters, assignee: e.target.value })} aria-label="Filter by assignee">
+          <option value="">All assignees</option>
+          <option value="me">Assigned to me</option>
+          <option value="none">Unassigned</option>
+          {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        <select value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value })} aria-label="Filter by priority">
+          <option value="">Any priority</option>
+          <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+        </select>
+        <select value={filters.due} onChange={(e) => setFilters({ ...filters, due: e.target.value })} aria-label="Filter by due date">
+          <option value="">Any due date</option>
+          <option value="overdue">Overdue</option>
+          <option value="week">Due in 7 days</option>
+        </select>
+        {filtersOn && (
+          <>
+            <span className="muted" role="status">Showing {tasks.filter(matches).length} of {tasks.length}</span>
+            <button className="link" onClick={() => setFilters({ q: '', assignee: '', priority: '', due: '' })}>Clear filters</button>
+          </>
+        )}
+      </div>
+
       <div className="board">
         {COLUMNS.map(([status, label]) => {
-          const col = tasks.filter((t) => t.status === status).sort(byPos);
+          const all = tasks.filter((t) => t.status === status).sort(byPos);
+          const col = all.filter(matches);
           return (
             <section key={status}
               className={`column ${overCol === status ? 'over' : ''}`}
               onDragOver={(e) => { e.preventDefault(); setOverCol(status); }}
               onDragLeave={() => setOverCol((c) => (c === status ? null : c))}
-              onDrop={() => drop(status, col.filter((t) => t.id !== dragId).length)}>
-              <h2>{label} <span className="muted">{col.length}</span></h2>
-              {col.length === 0 && <p className="muted empty">Drop a task here</p>}
+              onDrop={() => drop(status, all.filter((t) => t.id !== dragId).length)}>
+              <h2>{label} <span className="muted">{filtersOn ? `${col.length}/${all.length}` : col.length}</span></h2>
+              {col.length === 0 && <p className="muted empty">{filtersOn && all.length > 0 ? 'No tasks match the filters' : 'Drop a task here'}</p>}
               {col.map((t) => {
                 const a = memberById[t.assignee_id];
                 return (
@@ -229,7 +280,7 @@ export default function Board() {
                     onDragEnd={() => { setDragId(null); setOverCol(null); }}
                     onDrop={(e) => {
                       e.stopPropagation();
-                      const others = col.filter((x) => x.id !== dragId);
+                      const others = all.filter((x) => x.id !== dragId);
                       drop(status, Math.max(0, others.findIndex((x) => x.id === t.id)));
                     }}>
                     <div className="row-between">
@@ -245,7 +296,7 @@ export default function Board() {
                           {t.attachment_count}
                         </span>
                       )}
-                      {t.due_date && <span className="muted">Due {new Date(t.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                      {t.due_date && <span className={t.status !== 'done' && t.due_date.slice(0, 10) < today() ? 'due' : 'muted'}>Due {fmtDate(t.due_date)}</span>}
                       <label className="assignee">
                         {a ? <Avatar name={a.name} id={a.id} size={22} /> : <span className="avatar empty-av" aria-hidden="true">+</span>}
                         <select value={t.assignee_id || ''} onChange={(e) => assign(t, e.target.value)} aria-label={`Assign ${t.title}`}>

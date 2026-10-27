@@ -15,8 +15,8 @@ export default function Notes() {
 
   useEffect(() => {
     api('/projects').then(setProjects).catch(() => {});
-    if (location.state?.open) open(location.state.open);
   }, []);
+  useEffect(() => { if (location.state?.open) open(location.state.open); }, [location.key]);
   useEffect(() => { const t = setTimeout(() => load(q), 250); return () => clearTimeout(t); }, [q]);
 
   const open = (id) => api(`/notes/${id}`).then((n) => { setCurrent(n); setSaved(true); });

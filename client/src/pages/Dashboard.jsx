@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { fmtDate } from '../dates.js';
 
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
@@ -39,7 +40,7 @@ export default function Dashboard() {
             {dueSoon.map((t) => (
               <li key={t.id}>
                 <Link to={`/projects/${t.project_id}`}>{t.title}</Link>
-                <span className="muted">{t.project_name} · {fmt(t.due_date)}</span>
+                <span className="muted">{t.project_name} · {fmtDate(t.due_date)}</span>
               </li>
             ))}
           </ul>

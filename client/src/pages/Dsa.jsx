@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../api.js';
+import { today } from '../dates.js';
 
 const STATUS = [['todo', 'To solve'], ['attempted', 'Attempted'], ['solved', 'Solved'], ['revisit', 'Revisit']];
-const today = () => new Date().toISOString().slice(0, 10);
 const blank = { title: '', platform: 'LeetCode', url: '', topic: '', difficulty: 'medium', status: 'todo', next_review: '' };
 
 export default function Dsa() {
+  const location = useLocation();
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState(null);
   const [form, setForm] = useState(blank);
-  const [filters, setFilters] = useState({ q: '', status: '', difficulty: '' });
+  const [filters, setFilters] = useState({ q: location.state?.q || '', status: '', difficulty: '' });
+  useEffect(() => { if (location.state?.q) setFilters((f) => ({ ...f, q: location.state.q })); }, [location.key]);
   const [error, setError] = useState('');
 
   const load = () => {
