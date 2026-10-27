@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Avatar } from '../ui.jsx';
 import { getSocket } from '../socket.js';
+import TaskModal from '../TaskModal.jsx';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
 const byPos = (a, b) => a.position - b.position || a.id - b.id;
@@ -33,6 +34,7 @@ export default function Board() {
   const [online, setOnline] = useState([]);
   const [live, setLive] = useState(false);
   const [flashIds, setFlashIds] = useState(new Set());
+  const [openTaskId, setOpenTaskId] = useState(null);
 
   useEffect(() => {
     Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
@@ -61,7 +63,8 @@ export default function Board() {
     const onDisconnect = () => setLive(false);
     const handlers = {
       'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
-      'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? task : t))); flash(task.id); },
+      'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? { ...t, ...task } : t))); flash(task.id); },
+      'attachments:changed': ({ taskId, count }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, attachment_count: count } : t))),
       'task:deleted': ({ id: taskId }) => setTasks((p) => p.filter((t) => t.id !== taskId)),
       'tasks:reordered': ({ tasks: all, movedId }) => { setTasks(all); flash(movedId); },
       'member:added': ({ member }) => setMembers((p) => (p.some((m) => m.id === member.id) ? p : [...p, member])),
@@ -86,6 +89,7 @@ export default function Board() {
   }, [id]);
 
   const isOwner = project?.role === 'owner';
+  const openTask = tasks.find((t) => t.id === openTaskId);
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
 
   const addTask = async (e) => {
@@ -229,11 +233,18 @@ export default function Board() {
                       drop(status, Math.max(0, others.findIndex((x) => x.id === t.id)));
                     }}>
                     <div className="row-between">
-                      <span>{t.title}</span>
+                      <button className="task-title" onClick={() => setOpenTaskId(t.id)}>{t.title}</button>
                       <button className="link" aria-label={`Delete ${t.title}`} onClick={() => remove(t)}>×</button>
                     </div>
+                    {t.description && <p className="muted task-desc">{t.description}</p>}
                     <div className="meta">
                       <span className="tag">{t.priority}</span>
+                      {t.attachment_count > 0 && (
+                        <span className="muted clip" title="Attachments">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>
+                          {t.attachment_count}
+                        </span>
+                      )}
                       {t.due_date && <span className="muted">Due {new Date(t.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
                       <label className="assignee">
                         {a ? <Avatar name={a.name} id={a.id} size={22} /> : <span className="avatar empty-av" aria-hidden="true">+</span>}
@@ -250,6 +261,12 @@ export default function Board() {
           );
         })}
       </div>
+
+      {openTask && (
+        <TaskModal task={openTask} onClose={() => setOpenTaskId(null)}
+          onSaved={(t) => setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, ...t } : x)))}
+          onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))} />
+      )}
     </>
   );
 }

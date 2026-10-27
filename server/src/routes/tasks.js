@@ -3,10 +3,13 @@ import { pool, query } from '../db.js';
 import { getRole } from '../access.js';
 import { emitToProject } from '../socket.js';
 import { notify } from '../notify.js';
+import { removeFiles } from '../uploads.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
+const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count
+  FROM tasks t WHERE t.project_id = $1 ORDER BY t.status, t.position, t.id`;
 const LABELS = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
 
 const loadTask = async (taskId, userId) =>
@@ -20,7 +23,7 @@ router.get('/projects/:projectId/tasks', async (req, res, next) => {
     if (!(await getRole(req.params.projectId, req.userId)))
       return res.status(404).json({ error: 'Project not found.' });
     const { rows } = await query(
-      'SELECT * FROM tasks WHERE project_id=$1 ORDER BY status, position, id', [req.params.projectId]);
+      TASK_SELECT, [req.params.projectId]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -91,7 +94,7 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     for (let i = 0; i < ids.length; i++)
       await client.query('UPDATE tasks SET position=$2 WHERE id=$1', [ids[i], i]);
     await client.query('COMMIT');
-    const all = await query('SELECT * FROM tasks WHERE project_id=$1 ORDER BY status, position, id', [task.project_id]);
+    const all = await query(TASK_SELECT, [task.project_id]);
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
     if (task.assignee_id && status !== task.status)
       await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
@@ -108,7 +111,9 @@ router.delete('/tasks/:id', async (req, res, next) => {
   try {
     const task = await loadTask(req.params.id, req.userId);
     if (!task) return res.status(404).json({ error: 'Task not found.' });
+    const files = await query('SELECT stored_name FROM task_attachments WHERE task_id=$1', [task.id]);
     await query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
+    removeFiles(files.rows.map((f) => f.stored_name));
     emitToProject(task.project_id, 'task:deleted', { id: task.id }, req.get('x-socket-id'));
     res.status(204).end();
   } catch (e) { next(e); }

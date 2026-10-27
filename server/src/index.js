@@ -13,6 +13,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import dsaRoutes from './routes/dsa.js';
 import memberRoutes from './routes/members.js';
 import notificationRoutes from './routes/notifications.js';
+import attachmentRoutes from './routes/attachments.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/projects', requireAuth, projectRoutes);
 app.use('/api', requireAuth, taskRoutes);
 app.use('/api', requireAuth, memberRoutes);
+app.use('/api', requireAuth, attachmentRoutes);
 app.use('/api/notes', requireAuth, noteRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
 app.use('/api/dsa', requireAuth, dsaRoutes);
