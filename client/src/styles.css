@@ -208,3 +208,21 @@ kbd { font: 600 .7rem var(--body); border: 1px solid var(--line); border-radius:
 .palette-item .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette-item.active { background: rgba(245,213,71,.08); border-left-color: var(--chalk); }
 .filters { align-items: center; }
+
+/* Date cell + analytics */
+.date-cell { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.date-err { flex-basis: 100%; font-size: .78rem; }
+.chart { width: 100%; height: auto; display: block; }
+.chart-axis { stroke: var(--line); }
+.chart-val { fill: var(--text); font: 600 11px var(--body); }
+.chart-lbl { fill: var(--muted); font: 10px var(--body); }
+.bar-blue { fill: var(--blue); background: var(--blue); }
+.bar-chalk { fill: var(--chalk); background: var(--chalk); }
+.bar-green { fill: var(--green); background: var(--green); }
+.chart-empty { padding: 1.5rem 0; margin: 0; }
+.hbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
+.hbars li { display: grid; grid-template-columns: 110px 1fr 2rem; align-items: center; gap: .75rem; }
+.hb-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-track { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.hb-fill { display: block; height: 100%; border-radius: 5px; }
+.hbars b { text-align: right; }

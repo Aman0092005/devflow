@@ -12,3 +12,5 @@ export const addDays = (s, n) => {
 
 export const fmtDate = (s) =>
   new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+export const isValidDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= '2000-01-01' && v <= '2100-12-31';

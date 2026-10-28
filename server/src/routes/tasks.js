@@ -90,7 +90,10 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     );
     const ids = rows.map((r) => r.id);
     ids.splice(Math.max(0, Math.min(index, ids.length)), 0, task.id);
-    await client.query('UPDATE tasks SET status=$2, updated_at=now() WHERE id=$1', [task.id, status]);
+    await client.query(
+      `UPDATE tasks SET status=$2, updated_at=now(),
+         completed_at = CASE WHEN $2 = 'done' THEN COALESCE(completed_at, now()) ELSE NULL END
+       WHERE id=$1`, [task.id, status]);
     for (let i = 0; i < ids.length; i++)
       await client.query('UPDATE tasks SET position=$2 WHERE id=$1', [ids[i], i]);
     await client.query('COMMIT');

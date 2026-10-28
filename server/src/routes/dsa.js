@@ -4,6 +4,8 @@ import { query } from '../db.js';
 const router = Router();
 const STATUSES = ['todo', 'attempted', 'solved', 'revisit'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
+const validDate = (v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= '2000-01-01' && v <= '2100-12-31');
+const DATE_ERROR = 'The revise-on date must be a real date between 2000 and 2100.';
 
 router.get('/stats', async (req, res, next) => {
   try {
@@ -39,6 +41,7 @@ router.post('/', async (req, res, next) => {
     if (!title?.trim()) return res.status(400).json({ error: 'Give the problem a title.' });
     if (!DIFFICULTIES.includes(difficulty)) return res.status(400).json({ error: 'Invalid difficulty.' });
     if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+    if (!validDate(next_review)) return res.status(400).json({ error: DATE_ERROR });
     const { rows } = await query(
       `INSERT INTO dsa_problems (user_id, title, platform, url, topic, difficulty, status, notes, next_review, solved_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, CASE WHEN $7='solved' THEN CURRENT_DATE END) RETURNING *`,
@@ -53,6 +56,7 @@ router.patch('/:id', async (req, res, next) => {
     const { title, platform, url, topic, difficulty, status, notes, next_review } = req.body;
     if (difficulty && !DIFFICULTIES.includes(difficulty)) return res.status(400).json({ error: 'Invalid difficulty.' });
     if (status && !STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+    if (!validDate(next_review)) return res.status(400).json({ error: DATE_ERROR });
     const { rows } = await query(
       `UPDATE dsa_problems SET
          title=COALESCE($3,title), platform=COALESCE($4,platform), url=COALESCE($5,url),

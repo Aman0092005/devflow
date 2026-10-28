@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../api.js';
-import { today } from '../dates.js';
+import { isValidDate, today } from '../dates.js';
+import DateCell from '../DateCell.jsx';
 
 const STATUS = [['todo', 'To solve'], ['attempted', 'Attempted'], ['solved', 'Solved'], ['revisit', 'Revisit']];
 const blank = { title: '', platform: 'LeetCode', url: '', topic: '', difficulty: 'medium', status: 'todo', next_review: '' };
@@ -25,6 +26,7 @@ export default function Dsa() {
   const add = async (e) => {
     e.preventDefault();
     setError('');
+    if (form.next_review && !isValidDate(form.next_review)) return setError('The revise-on date must be a real date between 2000 and 2100.');
     try {
       await api('/dsa', { method: 'POST', body: form });
       setForm({ ...blank, platform: form.platform });
@@ -69,7 +71,7 @@ export default function Dsa() {
           {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <input placeholder="Link (optional)" value={form.url} onChange={set('url')} />
-        <input type="date" value={form.next_review} onChange={set('next_review')} aria-label="Revise on" title="Revise on" />
+        <input type="date" min="2000-01-01" max="2100-12-31" value={form.next_review} onChange={set('next_review')} aria-label="Revise on" title="Revise on" />
         <button className="btn">Add problem</button>
       </form>
       {error && <p className="error" role="alert">{error}</p>}
@@ -106,8 +108,8 @@ export default function Dsa() {
                       </select>
                     </td>
                     <td>
-                      <input type="date" className={due ? 'due' : ''} value={p.next_review ? p.next_review.slice(0, 10) : ''}
-                        onChange={(e) => patch(p.id, { next_review: e.target.value || null })} aria-label={`Revise ${p.title} on`} />
+                      <DateCell value={p.next_review} due={due} label={`Revise ${p.title} on`}
+                        onCommit={(v) => patch(p.id, { next_review: v })} />
                     </td>
                     <td><button className="link" onClick={() => remove(p)} aria-label={`Delete ${p.title}`}>Delete</button></td>
                   </tr>

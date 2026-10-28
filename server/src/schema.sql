@@ -94,3 +94,7 @@ CREATE TABLE IF NOT EXISTS task_attachments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS attachments_task_idx ON task_attachments(task_id);
+
+-- Phase 3: analytics
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+UPDATE tasks SET completed_at = updated_at WHERE status = 'done' AND completed_at IS NULL;
