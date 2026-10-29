@@ -98,3 +98,22 @@ CREATE INDEX IF NOT EXISTS attachments_task_idx ON task_attachments(task_id);
 -- Phase 3: analytics
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 UPDATE tasks SET completed_at = updated_at WHERE status = 'done' AND completed_at IS NULL;
+
+-- Phase 3: GitHub integration
+CREATE TABLE IF NOT EXISTS github_accounts (
+  user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  github_id BIGINT NOT NULL,
+  login TEXT NOT NULL,
+  avatar_url TEXT,
+  token_enc TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS project_repos (
+  project_id INT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+  repo TEXT NOT NULL,
+  linked_by INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_url TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_ref TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS tasks_github_ref_idx ON tasks(project_id, github_ref) WHERE github_ref IS NOT NULL;

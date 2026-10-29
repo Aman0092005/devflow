@@ -226,3 +226,20 @@ kbd { font: 600 .7rem var(--body); border: 1px solid var(--line); border-radius:
 .hb-track { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
 .hb-fill { display: block; height: 100%; border-radius: 5px; }
 .hbars b { text-align: right; }
+
+/* Phase 3: GitHub */
+.head-btns { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
+.gh-panel { margin: .5rem 0 1rem; max-width: 760px; }
+.integ { max-width: 640px; display: flex; flex-direction: column; gap: .75rem; }
+.integ p { margin: 0; }
+.gh-avatar { border-radius: 50%; }
+.setup { background: var(--bg); border: 1px dashed var(--line); border-radius: 4px; padding: .85rem 1rem; }
+.setup ol { margin: .5rem 0 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .35rem; }
+code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 0 .3rem; font-size: .85em; word-break: break-all; }
+.tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--line); margin: .5rem 0; }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font: inherit; padding: .4rem .75rem; cursor: pointer; }
+.tab.on { color: var(--text); border-bottom-color: var(--chalk); }
+.gh-list { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+.gh-list li { display: flex; align-items: center; gap: .75rem; padding: .55rem 0; border-top: 1px solid var(--line); }
+.gh-list li:first-child { border-top: 0; }
+.tag.gh { color: var(--blue); border-color: var(--blue); text-decoration: none; }

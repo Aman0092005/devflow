@@ -5,6 +5,7 @@ import { useAuth } from '../auth.jsx';
 import { Avatar } from '../ui.jsx';
 import { getSocket } from '../socket.js';
 import TaskModal from '../TaskModal.jsx';
+import GitHubPanel from '../GitHubPanel.jsx';
 import { addDays, fmtDate, today } from '../dates.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
@@ -38,6 +39,7 @@ export default function Board() {
   const [flashIds, setFlashIds] = useState(new Set());
   const [openTaskId, setOpenTaskId] = useState(null);
   const [filters, setFilters] = useState({ q: '', assignee: '', priority: '', due: '' });
+  const [showGh, setShowGh] = useState(false);
 
   useEffect(() => {
     Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
@@ -187,14 +189,22 @@ export default function Board() {
         </div>
         <div className="head-right">
           <span className={`live ${live ? 'on' : ''}`} role="status">{live ? `Live · ${online.length} online` : 'Reconnecting…'}</span>
+          <div className="head-btns">
+          <button className="team-btn" onClick={() => setShowGh((s) => !s)} aria-expanded={showGh}>GitHub</button>
           <button className="team-btn" onClick={() => setShowTeam((s) => !s)} aria-expanded={showTeam}>
           <span className="avatar-stack">
             {members.slice(0, 4).map((m) => <Avatar key={m.id} name={m.name} id={m.id} size={26} />)}
           </span>
           Team · {members.length}
         </button>
+          </div>
         </div>
       </div>
+
+      {showGh && (
+        <GitHubPanel projectId={id} isOwner={isOwner}
+          onImported={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))} />
+      )}
 
       {showTeam && (
         <section className="panel team-panel" aria-label="Project team">
@@ -290,6 +300,7 @@ export default function Board() {
                     {t.description && <p className="muted task-desc">{t.description}</p>}
                     <div className="meta">
                       <span className="tag">{t.priority}</span>
+                      {t.github_ref && <a className="tag gh" href={t.github_url} target="_blank" rel="noreferrer" draggable="false" title="Open on GitHub">GH {t.github_ref}</a>}
                       {t.attachment_count > 0 && (
                         <span className="muted clip" title="Attachments">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>

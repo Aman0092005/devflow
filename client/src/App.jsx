@@ -9,6 +9,7 @@ import Board from './pages/Board.jsx';
 import Notes from './pages/Notes.jsx';
 import Dsa from './pages/Dsa.jsx';
 import Analytics from './pages/Analytics.jsx';
+import Integrations from './pages/Integrations.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
@@ -34,6 +35,7 @@ function Shell() {
           <NavLink to="/notes">Notes</NavLink>
           <NavLink to="/dsa">DSA tracker</NavLink>
           <NavLink to="/analytics">Analytics</NavLink>
+          <NavLink to="/integrations">Integrations</NavLink>
         </nav>
         <div className="sidebar-foot">
           <span>{user.name}</span>
@@ -57,6 +59,7 @@ export default function App() {
         <Route path="notes" element={<Notes />} />
         <Route path="dsa" element={<Dsa />} />
         <Route path="analytics" element={<Analytics />} />
+        <Route path="integrations" element={<Integrations />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
