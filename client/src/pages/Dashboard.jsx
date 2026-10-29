@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { fmtDate } from '../dates.js';
+import DailyFocus from '../DailyFocus.jsx';
 
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
@@ -31,6 +32,8 @@ export default function Dashboard() {
         <div className="stat"><b>{counts.assigned_to_me}</b><span>Assigned to you</span></div>
         <div className="stat"><b>{counts.notes}</b><span>Notes</span></div>
       </div>
+
+      <DailyFocus />
 
       <div className="grid-2">
         <section className="panel">

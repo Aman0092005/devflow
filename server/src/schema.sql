@@ -117,3 +117,15 @@ CREATE TABLE IF NOT EXISTS project_repos (
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_url TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_ref TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS tasks_github_ref_idx ON tasks(project_id, github_ref) WHERE github_ref IS NOT NULL;
+
+-- Spaced revision + activity
+ALTER TABLE dsa_problems ADD COLUMN IF NOT EXISTS review_count INT NOT NULL DEFAULT 0;
+ALTER TABLE dsa_problems ADD COLUMN IF NOT EXISTS last_reviewed DATE;
+CREATE TABLE IF NOT EXISTS dsa_reviews (
+  id SERIAL PRIMARY KEY,
+  problem_id INT NOT NULL REFERENCES dsa_problems(id) ON DELETE CASCADE,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reviewed_on DATE NOT NULL,
+  result TEXT NOT NULL CHECK (result IN ('good','again'))
+);
+CREATE INDEX IF NOT EXISTS dsa_reviews_user_idx ON dsa_reviews(user_id, reviewed_on);

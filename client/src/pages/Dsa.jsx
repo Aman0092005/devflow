@@ -11,6 +11,7 @@ export default function Dsa() {
   const location = useLocation();
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState(null);
+  const [due, setDue] = useState([]);
   const [form, setForm] = useState(blank);
   const [filters, setFilters] = useState({ q: location.state?.q || '', status: '', difficulty: '' });
   useEffect(() => { if (location.state?.q) setFilters((f) => ({ ...f, q: location.state.q })); }, [location.key]);
@@ -19,7 +20,8 @@ export default function Dsa() {
   const load = () => {
     const qs = new URLSearchParams(filters).toString();
     api(`/dsa?${qs}`).then(setItems).catch((e) => setError(e.message));
-    api('/dsa/stats').then(setStats).catch(() => {});
+    api(`/dsa/stats?today=${today()}`).then(setStats).catch(() => {});
+    api(`/dsa/due?today=${today()}`).then(setDue).catch(() => {});
   };
   useEffect(() => { const t = setTimeout(load, 200); return () => clearTimeout(t); }, [filters]);
 
@@ -28,18 +30,23 @@ export default function Dsa() {
     setError('');
     if (form.next_review && !isValidDate(form.next_review)) return setError('The revise-on date must be a real date between 2000 and 2100.');
     try {
-      await api('/dsa', { method: 'POST', body: form });
+      await api('/dsa', { method: 'POST', body: { ...form, today: today() } });
       setForm({ ...blank, platform: form.platform });
       load();
     } catch (err) { setError(err.message); }
   };
   const patch = async (id, body) => {
-    try { await api(`/dsa/${id}`, { method: 'PATCH', body }); load(); } catch (err) { setError(err.message); }
+    try { await api(`/dsa/${id}`, { method: 'PATCH', body: { ...body, today: today() } }); load(); } catch (err) { setError(err.message); }
   };
   const remove = async (p) => {
     if (!confirm(`Delete "${p.title}"?`)) return;
     await api(`/dsa/${p.id}`, { method: 'DELETE' });
     load();
+  };
+  const review = async (p, result) => {
+    setError('');
+    try { await api(`/dsa/${p.id}/review`, { method: 'POST', body: { result, today: today() } }); load(); }
+    catch (err) { setError(err.message); }
   };
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -56,6 +63,27 @@ export default function Dsa() {
           <div className="stat"><b className="diff-hard">{stats.hard}</b><span>Hard</span></div>
           <div className="stat"><b className={stats.review_due ? 'due' : ''}>{stats.review_due}</b><span>Due for revision</span></div>
         </div>
+      )}
+
+      {due.length > 0 && (
+        <section className="panel revise" aria-label="Revise today">
+          <h2>Revise today <span className="muted">{due.length}</span></h2>
+          <ul className="rows">
+            {due.map((p) => (
+              <li key={p.id}>
+                <span>
+                  {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}{' '}
+                  <span className="muted">{p.topic} · {p.difficulty} · revised {p.review_count}×</span>
+                </span>
+                <span className="review-btns">
+                  <button className="btn ghost" onClick={() => review(p, 'good')}>Got it</button>
+                  <button className="btn ghost" onClick={() => review(p, 'again')}>Forgot</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="muted">“Got it” pushes the next revision out (3, 7, 14, 30, then 60 days). “Forgot” brings it back tomorrow.</p>
+        </section>
       )}
 
       <form className="inline-form panel" onSubmit={add}>
