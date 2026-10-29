@@ -278,3 +278,13 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px;
 .revise { margin-bottom: 1rem; }
 .revise .rows li { align-items: center; }
 .review-btns { display: flex; gap: .5rem; flex-shrink: 0; }
+
+/* Task comments */
+.comments { margin-top: .5rem; }
+.comment-list { list-style: none; margin: .5rem 0; padding: 0; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; }
+.comment { display: flex; gap: .65rem; align-items: flex-start; }
+.comment-head { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
+.comment-head .link { margin-left: auto; font-size: .85rem; }
+.comment-body { margin: .1rem 0 0; white-space: pre-wrap; word-break: break-word; }
+.comment-input { display: flex; gap: .6rem; align-items: flex-end; }
+.comment-input textarea { min-height: 64px; flex: 1; }

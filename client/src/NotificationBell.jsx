@@ -55,7 +55,7 @@ export default function NotificationBell() {
       setUnread((u) => Math.max(0, u - 1));
       api(`/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
     }
-    if (n.project_id) navigate(`/projects/${n.project_id}`);
+    if (n.project_id) navigate(`/projects/${n.project_id}`, n.task_id ? { state: { openTask: n.task_id } } : undefined);
   };
 
   const markAll = () => {

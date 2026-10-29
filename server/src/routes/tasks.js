@@ -8,7 +8,8 @@ import { removeFiles } from '../uploads.js';
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
-const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count
+const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count,
+    (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count
   FROM tasks t WHERE t.project_id = $1 ORDER BY t.status, t.position, t.id`;
 const LABELS = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
 
@@ -44,7 +45,7 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
       [projectId, title.trim(), description, priority, due_date || null, assignee_id || null]
     );
     emitToProject(projectId, 'task:created', { task: rows[0] }, req.get('x-socket-id'));
-    if (assignee_id) await notify({ userId: assignee_id, actorId: req.userId, projectId: Number(projectId), type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
+    if (assignee_id) await notify({ userId: assignee_id, actorId: req.userId, projectId: Number(projectId), taskId: rows[0].id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.status(201).json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -69,7 +70,7 @@ router.patch('/tasks/:id', async (req, res, next) => {
     );
     emitToProject(task.project_id, 'task:updated', { task: rows[0] }, req.get('x-socket-id'));
     if (assignee_id && Number(assignee_id) !== task.assignee_id)
-      await notify({ userId: assignee_id, actorId: req.userId, projectId: task.project_id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
+      await notify({ userId: assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.json(rows[0]);
   } catch (e) { next(e); }
 });
@@ -100,7 +101,7 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     const all = await query(TASK_SELECT, [task.project_id]);
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
     if (task.assignee_id && status !== task.status)
-      await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
+      await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});

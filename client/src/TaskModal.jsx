@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { api, apiBlob, apiUpload } from './api.js';
 import { getSocket } from './socket.js';
 import { SubtaskSuggester } from './AiTools.jsx';
+import Comments from './Comments.jsx';
 
 const MAX = 10 * 1024 * 1024;
 const fmtSize = (b) => (b < 1024 ? `${b} B` : b < MAX / 10 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-export default function TaskModal({ task, onClose, onSaved, onCount, onCreated }) {
+export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, onComments, isOwner }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [files, setFiles] = useState([]);
@@ -115,6 +116,8 @@ export default function TaskModal({ task, onClose, onSaved, onCount, onCreated }
             </li>
           ))}
         </ul>
+
+        <Comments task={task} isOwner={isOwner} onCount={onComments} />
 
         {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-foot">

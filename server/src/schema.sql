@@ -129,3 +129,14 @@ CREATE TABLE IF NOT EXISTS dsa_reviews (
   result TEXT NOT NULL CHECK (result IN ('good','again'))
 );
 CREATE INDEX IF NOT EXISTS dsa_reviews_user_idx ON dsa_reviews(user_id, reviewed_on);
+
+-- Task comments
+CREATE TABLE IF NOT EXISTS task_comments (
+  id SERIAL PRIMARY KEY,
+  task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS comments_task_idx ON task_comments(task_id, created_at);
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS task_id INT REFERENCES tasks(id) ON DELETE CASCADE;

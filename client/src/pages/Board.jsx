@@ -76,6 +76,8 @@ export default function Board() {
     const handlers = {
       'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
       'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? { ...t, ...task } : t))); flash(task.id); },
+      'comment:created': ({ comment, count }) => setTasks((p) => p.map((t) => (t.id === comment.task_id ? { ...t, comment_count: count } : t))),
+      'comment:deleted': ({ taskId, count }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, comment_count: count } : t))),
       'attachments:changed': ({ taskId, count }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, attachment_count: count } : t))),
       'task:deleted': ({ id: taskId }) => setTasks((p) => p.filter((t) => t.id !== taskId)),
       'tasks:reordered': ({ tasks: all, movedId }) => { setTasks(all); flash(movedId); },
@@ -313,6 +315,12 @@ export default function Board() {
                         </span>
                       )}
                       {t.due_date && <span className={t.status !== 'done' && t.due_date.slice(0, 10) < today() ? 'due' : 'muted'}>Due {fmtDate(t.due_date)}</span>}
+                      {t.comment_count > 0 && (
+                        <span className="muted clip" title="Comments">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                          {t.comment_count}
+                        </span>
+                      )}
                       <label className="assignee">
                         {a ? <Avatar name={a.name} id={a.id} size={22} /> : <span className="avatar empty-av" aria-hidden="true">+</span>}
                         <select value={t.assignee_id || ''} onChange={(e) => assign(t, e.target.value)} aria-label={`Assign ${t.title}`}>
@@ -333,7 +341,9 @@ export default function Board() {
         <TaskModal task={openTask} onClose={() => setOpenTaskId(null)}
           onSaved={(t) => setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, ...t } : x)))}
           onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))}
-          onCreated={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))} />
+          onCreated={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))}
+          isOwner={isOwner}
+          onComments={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, comment_count: count } : x)))} />
       )}
     </>
   );

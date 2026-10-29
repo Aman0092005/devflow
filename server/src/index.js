@@ -19,6 +19,7 @@ import analyticsRoutes from './routes/analytics.js';
 import { githubAccount, githubProject, githubCallback } from './routes/github.js';
 import aiRoutes from './routes/ai.js';
 import activityRoutes from './routes/activity.js';
+import commentRoutes from './routes/comments.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -47,6 +48,7 @@ app.use('/api/github', requireAuth, githubAccount);
 app.use('/api', requireAuth, githubProject);
 app.use('/api', requireAuth, aiRoutes);
 app.use('/api/activity', requireAuth, activityRoutes);
+app.use('/api', requireAuth, commentRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
