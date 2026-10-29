@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, apiBlob, apiUpload } from './api.js';
 import { getSocket } from './socket.js';
+import { SubtaskSuggester } from './AiTools.jsx';
 
 const MAX = 10 * 1024 * 1024;
 const fmtSize = (b) => (b < 1024 ? `${b} B` : b < MAX / 10 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-export default function TaskModal({ task, onClose, onSaved, onCount }) {
+export default function TaskModal({ task, onClose, onSaved, onCount, onCreated }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [files, setFiles] = useState([]);
@@ -89,6 +90,8 @@ export default function TaskModal({ task, onClose, onSaved, onCount }) {
         <label className="field">Description
           <textarea className="short" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add details, links or acceptance criteria…" />
         </label>
+
+        <SubtaskSuggester task={task} onCreated={onCreated} />
 
         <h3>Attachments</h3>
         <div className={`dropzone ${over ? 'over' : ''}`}

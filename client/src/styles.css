@@ -243,3 +243,19 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px;
 .gh-list li { display: flex; align-items: center; gap: .75rem; padding: .55rem 0; border-top: 1px solid var(--line); }
 .gh-list li:first-child { border-top: 0; }
 .tag.gh { color: var(--blue); border-color: var(--blue); text-decoration: none; }
+
+/* Phase 3: AI assistant */
+.ai-panel { margin: .5rem 0 1rem; max-width: 760px; }
+.chat { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; margin: .5rem 0 .75rem; }
+.msg { white-space: pre-wrap; padding: .55rem .8rem; border-radius: 6px; max-width: 90%; }
+.msg.user { align-self: flex-end; background: rgba(245,213,71,.14); border: 1px solid rgba(245,213,71,.4); }
+.msg.assistant { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.chip { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 99px; padding: .3rem .8rem; font: inherit; font-size: .88rem; cursor: pointer; }
+.chip:hover { border-color: var(--chalk); }
+.ai-note { margin: .5rem 0 0; font-size: .8rem; }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.btn.ghost:hover:not(:disabled) { border-color: var(--chalk); }
+.ai-box { margin: .25rem 0; }
+.ai-result { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: .75rem 1rem; margin-top: .6rem; }
+.ai-result p { margin: 0 0 .5rem; } .ai-result ul { margin: .25rem 0 .5rem; padding-left: 1.2rem; }

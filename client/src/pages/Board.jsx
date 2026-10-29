@@ -6,6 +6,7 @@ import { Avatar } from '../ui.jsx';
 import { getSocket } from '../socket.js';
 import TaskModal from '../TaskModal.jsx';
 import GitHubPanel from '../GitHubPanel.jsx';
+import AssistantPanel from '../AssistantPanel.jsx';
 import { addDays, fmtDate, today } from '../dates.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
@@ -40,6 +41,7 @@ export default function Board() {
   const [openTaskId, setOpenTaskId] = useState(null);
   const [filters, setFilters] = useState({ q: '', assignee: '', priority: '', due: '' });
   const [showGh, setShowGh] = useState(false);
+  const [showAi, setShowAi] = useState(false);
 
   useEffect(() => {
     Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
@@ -190,6 +192,7 @@ export default function Board() {
         <div className="head-right">
           <span className={`live ${live ? 'on' : ''}`} role="status">{live ? `Live · ${online.length} online` : 'Reconnecting…'}</span>
           <div className="head-btns">
+          <button className="team-btn" onClick={() => setShowAi((s) => !s)} aria-expanded={showAi}>Assistant</button>
           <button className="team-btn" onClick={() => setShowGh((s) => !s)} aria-expanded={showGh}>GitHub</button>
           <button className="team-btn" onClick={() => setShowTeam((s) => !s)} aria-expanded={showTeam}>
           <span className="avatar-stack">
@@ -200,6 +203,8 @@ export default function Board() {
           </div>
         </div>
       </div>
+
+      {showAi && <AssistantPanel projectId={id} />}
 
       {showGh && (
         <GitHubPanel projectId={id} isOwner={isOwner}
@@ -327,7 +332,8 @@ export default function Board() {
       {openTask && (
         <TaskModal task={openTask} onClose={() => setOpenTaskId(null)}
           onSaved={(t) => setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, ...t } : x)))}
-          onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))} />
+          onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))}
+          onCreated={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))} />
       )}
     </>
   );

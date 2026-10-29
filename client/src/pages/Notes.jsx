@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../api.js';
+import { NoteSummary } from '../AiTools.jsx';
 
 export default function Notes() {
   const location = useLocation();
@@ -64,6 +65,7 @@ export default function Notes() {
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <textarea value={current.content} onChange={(e) => edit({ content: e.target.value })} placeholder="Write anything: snippets, decisions, links…" />
+              <NoteSummary noteId={current.id} dirty={!saved} />
               <div className="row-between">
                 <button className="link" onClick={remove}>Delete note</button>
                 <div>
