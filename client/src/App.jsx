@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from './api.js';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import SearchPalette from './SearchPalette.jsx';
 import { useAuth } from './auth.jsx';
@@ -15,6 +16,10 @@ import NotificationBell from './NotificationBell.jsx';
 function Shell() {
   const { user, loading, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Tell the server your timezone so due-date reminders arrive on your calendar day.
+  useEffect(() => {
+    if (user) api('/auth/timezone', { method: 'PUT', body: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } }).catch(() => {});
+  }, [user?.id]);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen((o) => !o); }

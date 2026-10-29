@@ -44,4 +44,21 @@ router.get('/me', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.put('/timezone', requireAuth, async (req, res, next) => {
+  try {
+    const tz = String(req.body.tz || '');
+    if (!(await query('SELECT 1 FROM pg_timezone_names WHERE name=$1', [tz])).rowCount)
+      return res.status(400).json({ error: 'Unknown timezone.' });
+    await query('UPDATE users SET timezone=$2 WHERE id=$1', [req.userId, tz]);
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+router.put('/reminders', requireAuth, async (req, res, next) => {
+  try {
+    await query('UPDATE users SET reminders=$2 WHERE id=$1', [req.userId, !!req.body.enabled]);
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
 export default router;

@@ -17,10 +17,11 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [reminders, setReminders] = useState(true);
   const box = useRef(null);
 
   useEffect(() => {
-    api('/notifications').then((d) => { setItems(d.items); setUnread(d.unread); }).catch(() => {});
+    api('/notifications').then((d) => { setItems(d.items); setUnread(d.unread); setReminders(d.reminders); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -56,6 +57,12 @@ export default function NotificationBell() {
       api(`/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
     }
     if (n.project_id) navigate(`/projects/${n.project_id}`, n.task_id ? { state: { openTask: n.task_id } } : undefined);
+  };
+
+  const toggleReminders = () => {
+    const next = !reminders;
+    setReminders(next);
+    api('/auth/reminders', { method: 'PUT', body: { enabled: next } }).catch(() => setReminders(!next));
   };
 
   const markAll = () => {
@@ -98,6 +105,9 @@ export default function NotificationBell() {
                 ))}
               </ul>
             )}
+            <div className="notif-foot">
+              <label><input type="checkbox" checked={reminders} onChange={toggleReminders} /> Due-date reminders</label>
+            </div>
           </div>
         )}
       </div>

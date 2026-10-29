@@ -288,3 +288,7 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px;
 .comment-body { margin: .1rem 0 0; white-space: pre-wrap; word-break: break-word; }
 .comment-input { display: flex; gap: .6rem; align-items: flex-end; }
 .comment-input textarea { min-height: 64px; flex: 1; }
+
+/* Reminders toggle */
+.notif-foot { border-top: 1px solid var(--line); padding: .6rem 1rem; }
+.notif-foot label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; color: var(--muted); cursor: pointer; }

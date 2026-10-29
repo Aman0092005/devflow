@@ -140,3 +140,15 @@ CREATE TABLE IF NOT EXISTS task_comments (
 );
 CREATE INDEX IF NOT EXISTS comments_task_idx ON task_comments(task_id, created_at);
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS task_id INT REFERENCES tasks(id) ON DELETE CASCADE;
+
+-- Due-date reminders
+ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reminders BOOLEAN NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS task_reminders (
+  task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('tomorrow','today','overdue')),
+  due_date DATE NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (task_id, user_id, kind, due_date)
+);

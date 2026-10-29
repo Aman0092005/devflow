@@ -5,14 +5,15 @@ const router = Router();
 
 router.get('/', async (req, res, next) => {
   try {
-    const [items, unread] = await Promise.all([
+    const [items, unread, pref] = await Promise.all([
       query(
         `SELECT n.*, p.name AS project_name FROM notifications n
          LEFT JOIN projects p ON p.id = n.project_id
          WHERE n.user_id = $1 ORDER BY n.created_at DESC LIMIT 30`, [req.userId]),
       query('SELECT COUNT(*)::int AS c FROM notifications WHERE user_id=$1 AND NOT is_read', [req.userId]),
+      query('SELECT reminders FROM users WHERE id=$1', [req.userId]),
     ]);
-    res.json({ items: items.rows, unread: unread.rows[0].c });
+    res.json({ items: items.rows, unread: unread.rows[0].c, reminders: pref.rows[0]?.reminders !== false });
   } catch (e) { next(e); }
 });
 

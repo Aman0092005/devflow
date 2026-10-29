@@ -20,6 +20,7 @@ import { githubAccount, githubProject, githubCallback } from './routes/github.js
 import aiRoutes from './routes/ai.js';
 import activityRoutes from './routes/activity.js';
 import commentRoutes from './routes/comments.js';
+import { startReminders } from './reminders.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -59,3 +60,4 @@ const port = process.env.PORT || 4000;
 const server = http.createServer(app);
 initSocket(server);
 server.listen(port, () => console.log(`DevFlow API on http://localhost:${port}`));
+startReminders();
