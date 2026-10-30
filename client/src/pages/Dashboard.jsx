@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { fmtDate } from '../dates.js';
 import DailyFocus from '../DailyFocus.jsx';
+import { useLiveRefresh } from '../useLive.js';
 
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
@@ -12,7 +13,9 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => { api('/dashboard').then(setData).catch((e) => setError(e.message)); }, []);
+  const load = () => api('/dashboard').then(setData).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+  useLiveRefresh(load);
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p className="muted">Loading…</p>;
   const { counts, dueSoon, recentNotes, activeProjects } = data;

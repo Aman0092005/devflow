@@ -3,6 +3,7 @@ import { query } from '../db.js';
 import { getRole } from '../access.js';
 import { emitToProject, removeUserFromProject } from '../socket.js';
 import { notify } from '../notify.js';
+import { logActivity } from '../activityLog.js';
 
 const router = Router();
 
@@ -29,12 +30,13 @@ router.post('/projects/:projectId/members', async (req, res, next) => {
     if (!email) return res.status(400).json({ error: 'Enter an email address.' });
     const { rows } = await query('SELECT id, name, email FROM users WHERE email = lower($1)', [email]);
     const user = rows[0];
-    if (!user) return res.status(404).json({ error: 'No DevFlow account uses that email. Ask them to sign up first.' });
+    if (!user) return res.status(404).json({ error: 'No DevFlow account uses that email. Create an invite link instead, and they can sign up from it.' });
     if (await getRole(projectId, user.id)) return res.status(409).json({ error: `${user.name} is already on this project.` });
 
     await query('INSERT INTO project_members (project_id, user_id, role) VALUES ($1,$2,\'member\')', [projectId, user.id]);
     const member = { ...user, role: 'member' };
     emitToProject(projectId, 'member:added', { member }, req.get('x-socket-id'));
+    logActivity({ projectId: Number(projectId), userId: req.userId, kind: 'member_added', meta: { name: user.name } });
     await notify({ userId: user.id, actorId: req.userId, projectId: Number(projectId), type: 'added_to_project', text: 'added you to the project' });
     res.status(201).json(member);
   } catch (e) { next(e); }
@@ -56,6 +58,8 @@ router.delete('/projects/:projectId/members/:userId', async (req, res, next) => 
     await query('DELETE FROM project_members WHERE project_id=$1 AND user_id=$2', [projectId, targetId]);
     await query('UPDATE tasks SET assignee_id = NULL WHERE project_id=$1 AND assignee_id=$2', [projectId, targetId]);
     emitToProject(projectId, 'member:removed', { userId: targetId }, req.get('x-socket-id'));
+    const who = (await query('SELECT name FROM users WHERE id=$1', [targetId])).rows[0]?.name;
+    logActivity({ projectId: Number(projectId), userId: req.userId, kind: targetId === req.userId ? 'member_left' : 'member_removed', meta: { name: who } });
     removeUserFromProject(projectId, targetId);
     res.status(204).end();
   } catch (e) { next(e); }

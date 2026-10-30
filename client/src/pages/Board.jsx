@@ -7,6 +7,9 @@ import { getSocket } from '../socket.js';
 import TaskModal from '../TaskModal.jsx';
 import GitHubPanel from '../GitHubPanel.jsx';
 import AssistantPanel from '../AssistantPanel.jsx';
+import ActivityFeed from '../ActivityFeed.jsx';
+import Calendar from '../Calendar.jsx';
+import InviteLinks from '../InviteLinks.jsx';
 import { addDays, fmtDate, today } from '../dates.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
@@ -39,15 +42,25 @@ export default function Board() {
   const [live, setLive] = useState(false);
   const [flashIds, setFlashIds] = useState(new Set());
   const [openTaskId, setOpenTaskId] = useState(null);
-  const [filters, setFilters] = useState({ q: '', assignee: '', priority: '', due: '' });
+  const [filters, setFilters] = useState({ q: '', assignee: '', priority: '', due: '', label: '' });
   const [showGh, setShowGh] = useState(false);
   const [showAi, setShowAi] = useState(false);
+  const [showAct, setShowAct] = useState(false);
+  const [labels, setLabels] = useState([]);
+  const [view, setView] = useState('board');
 
   useEffect(() => {
-    Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
-      .then(([p, t, m]) => { setProject(p); setTasks(t); setMembers(m); })
+    Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`)])
+      .then(([p, t, m, l]) => { setProject(p); setTasks(t); setMembers(m); setLabels(l); })
       .catch((e) => setError(e.message));
   }, [id]);
+
+  // Replaces the label list and drops deleted labels from tasks.
+  const applyLabels = (list) => {
+    setLabels(list);
+    const ids = new Set(list.map((l) => l.id));
+    setTasks((p) => p.map((t) => ((t.label_ids || []).some((x) => !ids.has(x)) ? { ...t, label_ids: t.label_ids.filter((x) => ids.has(x)) } : t)));
+  };
 
   // Opened from the global search: jump straight to the task.
   useEffect(() => {
@@ -67,8 +80,8 @@ export default function Board() {
       s.emit('project:join', Number(id));
       if (!first) {
         // Reconnected: catch up on anything missed while offline.
-        Promise.all([api(`/projects/${id}/tasks`), api(`/projects/${id}/members`)])
-          .then(([t, m]) => { setTasks(t); setMembers(m); }).catch(() => {});
+        Promise.all([api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`)])
+          .then(([t, m, l]) => { setTasks(t); setMembers(m); setLabels(l); }).catch(() => {});
       }
       first = false;
     };
@@ -76,6 +89,8 @@ export default function Board() {
     const handlers = {
       'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
       'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? { ...t, ...task } : t))); flash(task.id); },
+      'task:labels': ({ taskId, label_ids }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, label_ids } : t))),
+      'labels:changed': ({ labels: list }) => applyLabels(list),
       'comment:created': ({ comment, count }) => setTasks((p) => p.map((t) => (t.id === comment.task_id ? { ...t, comment_count: count } : t))),
       'comment:deleted': ({ taskId, count }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, comment_count: count } : t))),
       'attachments:changed': ({ taskId, count }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, attachment_count: count } : t))),
@@ -110,6 +125,7 @@ export default function Board() {
     const q = filters.q.trim().toLowerCase();
     if (q && !t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
     if (filters.priority && t.priority !== filters.priority) return false;
+    if (filters.label && !(t.label_ids || []).includes(Number(filters.label))) return false;
     if (filters.assignee === 'me' && t.assignee_id !== user.id) return false;
     if (filters.assignee === 'none' && t.assignee_id) return false;
     if (/^\d+$/.test(filters.assignee) && t.assignee_id !== Number(filters.assignee)) return false;
@@ -122,6 +138,7 @@ export default function Board() {
     return true;
   };
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
+  const labelById = Object.fromEntries(labels.map((l) => [l.id, l]));
 
   const addTask = async (e) => {
     e.preventDefault();
@@ -151,6 +168,13 @@ export default function Board() {
     try {
       await api(`/tasks/${dragId}/move`, { method: 'POST', body: { status, index } });
     } catch (err) { setTasks(prev); setError(err.message); }
+  };
+
+  const setDue = async (t, day) => {
+    const prev = tasks;
+    setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, due_date: day } : x)));
+    try { await api(`/tasks/${t.id}`, { method: 'PATCH', body: { due_date: day } }); }
+    catch (err) { setTasks(prev); setError(err.message); }
   };
 
   const remove = async (t) => {
@@ -194,6 +218,7 @@ export default function Board() {
         <div className="head-right">
           <span className={`live ${live ? 'on' : ''}`} role="status">{live ? `Live · ${online.length} online` : 'Reconnecting…'}</span>
           <div className="head-btns">
+          <button className="team-btn" onClick={() => setShowAct((s) => !s)} aria-expanded={showAct}>Activity</button>
           <button className="team-btn" onClick={() => setShowAi((s) => !s)} aria-expanded={showAi}>Assistant</button>
           <button className="team-btn" onClick={() => setShowGh((s) => !s)} aria-expanded={showGh}>GitHub</button>
           <button className="team-btn" onClick={() => setShowTeam((s) => !s)} aria-expanded={showTeam}>
@@ -205,6 +230,8 @@ export default function Board() {
           </div>
         </div>
       </div>
+
+      {showAct && <ActivityFeed projectId={id} onOpenTask={setOpenTaskId} />}
 
       {showAi && <AssistantPanel projectId={id} />}
 
@@ -233,6 +260,7 @@ export default function Board() {
               <button className="btn">Invite</button>
             </form>
           ) : <p className="muted">Only the owner can invite people.</p>}
+          {isOwner && <InviteLinks projectId={id} />}
           {inviteMsg && <p role="status" className={inviteMsg.ok ? 'ok' : 'error'}>{inviteMsg.text}</p>}
         </section>
       )}
@@ -251,6 +279,11 @@ export default function Board() {
       </form>
       {error && <p className="error" role="alert">{error}</p>}
 
+      <div className="tabs view-tabs" role="tablist" aria-label="View">
+        <button role="tab" aria-selected={view === 'board'} className={view === 'board' ? 'tab on' : 'tab'} onClick={() => setView('board')}>Board</button>
+        <button role="tab" aria-selected={view === 'calendar'} className={view === 'calendar' ? 'tab on' : 'tab'} onClick={() => setView('calendar')}>Calendar</button>
+      </div>
+
       <div className="filters" role="search" aria-label="Filter tasks">
         <input placeholder="Filter tasks by title or description" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
         <select value={filters.assignee} onChange={(e) => setFilters({ ...filters, assignee: e.target.value })} aria-label="Filter by assignee">
@@ -263,6 +296,12 @@ export default function Board() {
           <option value="">Any priority</option>
           <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
         </select>
+        {labels.length > 0 && (
+          <select value={filters.label} onChange={(e) => setFilters({ ...filters, label: e.target.value })} aria-label="Filter by label">
+            <option value="">All labels</option>
+            {labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        )}
         <select value={filters.due} onChange={(e) => setFilters({ ...filters, due: e.target.value })} aria-label="Filter by due date">
           <option value="">Any due date</option>
           <option value="overdue">Overdue</option>
@@ -271,11 +310,14 @@ export default function Board() {
         {filtersOn && (
           <>
             <span className="muted" role="status">Showing {tasks.filter(matches).length} of {tasks.length}</span>
-            <button className="link" onClick={() => setFilters({ q: '', assignee: '', priority: '', due: '' })}>Clear filters</button>
+            <button className="link" onClick={() => setFilters({ q: '', assignee: '', priority: '', due: '', label: '' })}>Clear filters</button>
           </>
         )}
       </div>
 
+      {view === 'calendar' && <Calendar tasks={tasks.filter(matches)} onOpen={setOpenTaskId} onSetDue={setDue} />}
+
+      {view === 'board' && (
       <div className="board">
         {COLUMNS.map(([status, label]) => {
           const all = tasks.filter((t) => t.status === status).sort(byPos);
@@ -305,6 +347,11 @@ export default function Board() {
                       <button className="link" aria-label={`Delete ${t.title}`} onClick={() => remove(t)}>×</button>
                     </div>
                     {t.description && <p className="muted task-desc">{t.description}</p>}
+                    {(t.label_ids || []).length > 0 && (
+                      <div className="label-row">
+                        {t.label_ids.map((lid) => labelById[lid]).filter(Boolean).map((l) => <span key={l.id} className="label"><i style={{ background: l.color }} />{l.name}</span>)}
+                      </div>
+                    )}
                     <div className="meta">
                       <span className="tag">{t.priority}</span>
                       {t.github_ref && <a className="tag gh" href={t.github_url} target="_blank" rel="noreferrer" draggable="false" title="Open on GitHub">GH {t.github_ref}</a>}
@@ -336,13 +383,15 @@ export default function Board() {
           );
         })}
       </div>
+      )}
 
       {openTask && (
         <TaskModal task={openTask} onClose={() => setOpenTaskId(null)}
           onSaved={(t) => setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, ...t } : x)))}
           onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))}
           onCreated={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))}
-          isOwner={isOwner}
+          isOwner={isOwner} labels={labels} onLabelsList={applyLabels}
+          onTaskLabels={(taskId, ids) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, label_ids: ids } : x)))}
           onComments={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, comment_count: count } : x)))} />
       )}
     </>

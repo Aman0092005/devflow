@@ -5,6 +5,7 @@ import { getRole } from '../access.js';
 import { emitToProject } from '../socket.js';
 import { encrypt, decrypt } from '../crypto.js';
 import { gh, githubConfigured, sendGitHubError } from '../github.js';
+import { logActivity } from '../activityLog.js';
 
 export const githubAccount = Router(); // mounted at /api/github
 export const githubProject = Router(); // mounted at /api
@@ -194,6 +195,7 @@ githubProject.post('/projects/:projectId/github/import', async (req, res, next) 
     if (!rows[0]) return res.status(409).json({ error: 'That issue is already on the board.' });
     const task = { ...rows[0], attachment_count: 0 };
     emitToProject(projectId, 'task:created', { task }, req.get('x-socket-id'));
+    logActivity({ projectId: Number(projectId), userId: req.userId, kind: 'task_imported', taskId: task.id, meta: { title: task.title, ref: task.github_ref } });
     res.status(201).json(task);
   } catch (e) { sendGitHubError(res, e, next); }
 });

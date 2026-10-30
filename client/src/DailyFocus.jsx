@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from './api.js';
 import { addDays } from './dates.js';
+import { useLiveRefresh } from './useLive.js';
 
 const level = (n) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : n <= 4 ? 3 : 4);
 const WEEKS = 20, CELL = 14, GAP = 3, LEFT = 28, TOP = 16;
@@ -48,19 +49,21 @@ export default function DailyFocus() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     api(`/activity?today=${today}&tz=${encodeURIComponent(tz)}`).then(setData).catch((e) => setError(e.message));
-  }, []);
+  };
+  useEffect(load, []);
+  useLiveRefresh(load);
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return null;
-  const { today, focus, revise_due, streak, today_count, days } = data;
+  const { today, focus, up_next, revise_due, streak, today_count, days } = data;
   const state = (t) => (t.due_date && t.due_date.slice(0, 10) < today ? 'Overdue' : t.due_date && t.due_date.slice(0, 10) === today ? 'Due today' : 'In progress');
-  const clear = focus.length === 0 && revise_due === 0;
+  const clear = focus.length === 0 && up_next.length === 0 && revise_due === 0;
 
   return (
     <div className="focus-grid">
@@ -69,7 +72,7 @@ export default function DailyFocus() {
           <h2>Today</h2>
           <span className="muted">{streak > 0 ? `${streak}-day streak` : 'No streak yet'} · {today_count} done today</span>
         </div>
-        {clear && <p className="muted">You’re clear for today. Start a task, or solve a DSA problem to begin a streak.</p>}
+        {clear && <p className="muted">No open tasks are assigned to you. Add one on a board, or solve a DSA problem{streak > 0 ? ' to keep your streak going' : ''}.</p>}
         <ul className="rows">
           {revise_due > 0 && (
             <li><Link to="/dsa">{revise_due} DSA {revise_due === 1 ? 'problem' : 'problems'} to revise</Link><span className="tag due-tag">Revise</span></li>
@@ -81,6 +84,19 @@ export default function DailyFocus() {
             </li>
           ))}
         </ul>
+        {up_next.length > 0 && (
+          <>
+            <h3 className="up-next">{focus.length > 0 || revise_due > 0 ? 'Up next' : 'Nothing urgent. Up next'}</h3>
+            <ul className="rows">
+              {up_next.map((t) => (
+                <li key={t.id}>
+                  <Link to={`/projects/${t.project_id}`} state={{ openTask: t.id }}>{t.title}</Link>
+                  <span className="muted">{t.project_name} <span className="tag">{t.priority}</span></span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
       <section className="panel">
         <h2>Activity</h2>

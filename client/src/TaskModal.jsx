@@ -3,13 +3,16 @@ import { api, apiBlob, apiUpload } from './api.js';
 import { getSocket } from './socket.js';
 import { SubtaskSuggester } from './AiTools.jsx';
 import Comments from './Comments.jsx';
+import LabelPicker from './LabelPicker.jsx';
+import { isValidDate } from './dates.js';
 
 const MAX = 10 * 1024 * 1024;
 const fmtSize = (b) => (b < 1024 ? `${b} B` : b < MAX / 10 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, onComments, isOwner }) {
+export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, onComments, isOwner, labels = [], onLabelsList, onTaskLabels }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [due, setDue] = useState(task.due_date ? task.due_date.slice(0, 10) : '');
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,9 +72,10 @@ export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, 
 
   const save = async () => {
     if (!title.trim()) return setError('The title can’t be empty.');
+    if (due && !isValidDate(due)) return setError('The due date must be a real date between 2000 and 2100.');
     setSaving(true);
     try {
-      const t = await api(`/tasks/${task.id}`, { method: 'PATCH', body: { title: title.trim(), description } });
+      const t = await api(`/tasks/${task.id}`, { method: 'PATCH', body: { title: title.trim(), description, due_date: due || null } });
       onSaved(t);
       onClose();
     } catch (err) { setError(err.message); setSaving(false); }
@@ -91,6 +95,12 @@ export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, 
         <label className="field">Description
           <textarea className="short" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add details, links or acceptance criteria…" />
         </label>
+
+        <label className="field">Due date
+          <input type="date" min="2000-01-01" max="2100-12-31" value={due} onChange={(e) => setDue(e.target.value)} />
+        </label>
+
+        <LabelPicker task={task} labels={labels} isOwner={isOwner} onLabelsList={onLabelsList} onTaskLabels={onTaskLabels} />
 
         <SubtaskSuggester task={task} onCreated={onCreated} />
 

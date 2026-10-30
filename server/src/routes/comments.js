@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { emitToProject } from '../socket.js';
 import { notify } from '../notify.js';
+import { logActivity } from '../activityLog.js';
 
 const router = Router();
 const COLS = 'c.id, c.task_id, c.user_id, u.name AS author_name, c.body, c.created_at';
@@ -38,6 +39,7 @@ router.post('/tasks/:id/comments', async (req, res, next) => {
     const comment = rows[0];
     const count = await countFor(task.id);
     emitToProject(task.project_id, 'comment:created', { comment, count }, req.get('x-socket-id'));
+    logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_comment', taskId: task.id, meta: { title: task.title } });
 
     // Tell the assignee and everyone already in the thread, but only people still on the project.
     const thread = await query('SELECT DISTINCT user_id FROM task_comments WHERE task_id=$1 AND user_id IS NOT NULL', [task.id]);

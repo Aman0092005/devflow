@@ -152,3 +152,41 @@ CREATE TABLE IF NOT EXISTS task_reminders (
   sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (task_id, user_id, kind, due_date)
 );
+
+-- Invite links + project activity feed
+CREATE TABLE IF NOT EXISTS project_invites (
+  id SERIAL PRIMARY KEY,
+  project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  created_by INT REFERENCES users(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  max_uses INT,
+  uses INT NOT NULL DEFAULT 0,
+  revoked BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS project_activity (
+  id SERIAL PRIMARY KEY,
+  project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  kind TEXT NOT NULL,
+  task_id INT REFERENCES tasks(id) ON DELETE SET NULL,
+  meta JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS activity_project_idx ON project_activity(project_id, id DESC);
+
+-- Labels
+CREATE TABLE IF NOT EXISTS labels (
+  id SERIAL PRIMARY KEY,
+  project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#7ab8ff',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS labels_name_idx ON labels(project_id, lower(name));
+CREATE TABLE IF NOT EXISTS task_labels (
+  task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  label_id INT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, label_id)
+);

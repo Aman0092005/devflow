@@ -11,6 +11,7 @@ import Notes from './pages/Notes.jsx';
 import Dsa from './pages/Dsa.jsx';
 import Analytics from './pages/Analytics.jsx';
 import Integrations from './pages/Integrations.jsx';
+import Invite from './pages/Invite.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
@@ -57,6 +58,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/invite/:token" element={<Invite />} />
       <Route element={<Shell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

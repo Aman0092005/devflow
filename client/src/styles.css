@@ -292,3 +292,53 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px;
 /* Reminders toggle */
 .notif-foot { border-top: 1px solid var(--line); padding: .6rem 1rem; }
 .notif-foot label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; color: var(--muted); cursor: pointer; }
+
+/* Invite links + activity feed */
+.invite-links { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.invite-links h3 { margin: 0 0 .25rem; font: 600 .95rem var(--head); }
+.invite-links .invite { flex-wrap: wrap; }
+.link-list { list-style: none; margin: .75rem 0 0; padding: 0; }
+.link-list li { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-top: 1px solid var(--line); }
+.link-list li:first-child { border-top: 0; }
+.link-list code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-card .btn { text-align: center; text-decoration: none; }
+.feed-panel { margin: .5rem 0 1rem; max-width: 640px; }
+.feed { list-style: none; margin: .5rem 0; padding: 0; max-height: 380px; overflow-y: auto; }
+.feed li { display: flex; align-items: flex-start; gap: .65rem; padding: .55rem 0; border-top: 1px solid var(--line); }
+.feed li:first-child { border-top: 0; }
+
+/* Labels */
+.label-row { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem; }
+.label { display: inline-flex; align-items: center; gap: .3rem; font-size: .75rem; border: 1px solid var(--line); border-radius: 99px; padding: 0 .55rem; color: var(--text); background: transparent; font-family: inherit; }
+.label i { width: .55rem; height: .55rem; border-radius: 50%; flex: none; }
+.label-btn { font-size: .85rem; padding: .15rem .65rem; cursor: pointer; }
+.label-btn:hover { border-color: var(--muted); }
+.label-btn.on { border-color: var(--chalk); background: rgba(245,213,71,.12); }
+.label-wrap { display: inline-flex; align-items: center; gap: .25rem; }
+.labels-box { margin: .25rem 0; }
+.labels-box h3 { margin: 0; }
+.label-new { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .6rem; }
+.label-new input { flex: 1 1 140px; }
+
+/* Calendar */
+.view-tabs { margin: .25rem 0 1rem; }
+.cal-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.cal-head h2 { margin: 0; min-width: 11rem; text-align: center; }
+.cal-scroll { overflow-x: auto; }
+.cal-grid { min-width: 720px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel); }
+.cal-dow { padding: .4rem .5rem; font: 600 .78rem var(--body); color: var(--muted); border-bottom: 1px solid var(--line); }
+.cal-day { min-height: 104px; padding: .3rem; border-top: 1px solid var(--line); border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: .2rem; transition: background .15s; }
+.cal-day:nth-child(7n + 8) { border-left: 0; }
+.cal-day.out { opacity: .45; }
+.cal-day.over { background: rgba(245,213,71,.1); }
+.cal-num { font-size: .8rem; color: var(--muted); }
+.cal-day.today .cal-num { color: #14213a; background: var(--chalk); border-radius: 99px; align-self: flex-start; padding: 0 .4rem; font-weight: 700; }
+.cal-task { display: block; width: 100%; text-align: left; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 3px; padding: .1rem .35rem; font: inherit; font-size: .8rem; cursor: grab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-task.p-high { border-left-color: var(--red); } .cal-task.p-medium { border-left-color: var(--blue); } .cal-task.p-low { border-left-color: var(--green); }
+.cal-task.done { text-decoration: line-through; opacity: .55; }
+.cal-task.late { color: var(--red); }
+.cal-undated { margin-bottom: .75rem; }
+.cal-undated-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
+.cal-undated-list .cal-task { width: auto; max-width: 220px; }
+
+.up-next { margin: .9rem 0 .1rem; font: 600 .75rem var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }

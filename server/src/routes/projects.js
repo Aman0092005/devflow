@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { emitToProject } from '../socket.js';
+import { emitToProject, notifyProjectChanged } from '../socket.js';
 import { removeFiles } from '../uploads.js';
 
 const router = Router();
@@ -68,10 +68,12 @@ router.delete('/:id', async (req, res, next) => {
     const files = await query(
       `SELECT a.stored_name FROM task_attachments a JOIN tasks t ON t.id = a.task_id
        JOIN projects p ON p.id = t.project_id WHERE p.id = $1 AND p.owner_id = $2`, [req.params.id, req.userId]);
+    const members = await query('SELECT user_id FROM project_members WHERE project_id=$1', [req.params.id]);
     const r = await query('DELETE FROM projects WHERE id=$1 AND owner_id=$2', [req.params.id, req.userId]);
     if (!r.rowCount) return res.status(404).json({ error: 'Project not found, or you are not its owner.' });
     removeFiles(files.rows.map((f) => f.stored_name));
     emitToProject(req.params.id, 'project:deleted', {}, req.get('x-socket-id'));
+    notifyProjectChanged(members.rows.map((m) => m.user_id), req.params.id);
     res.status(204).end();
   } catch (e) { next(e); }
 });

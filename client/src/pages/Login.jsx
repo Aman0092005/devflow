@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 
 export default function Login() {
   const { user, authenticate } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState('login');
+  const [params] = useSearchParams();
+  const rawNext = params.get('next') || '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/'; // only same-site paths
+  const [mode, setMode] = useState(params.get('mode') === 'register' ? 'register' : 'login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={next} replace />;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
@@ -19,7 +22,7 @@ export default function Login() {
     setError('');
     try {
       await authenticate(mode, form);
-      navigate('/');
+      navigate(next);
     } catch (err) {
       setError(err.message);
     } finally {

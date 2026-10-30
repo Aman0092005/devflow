@@ -5,6 +5,7 @@ import path from 'node:path';
 import { query } from '../db.js';
 import { UPLOAD_DIR, removeFiles } from '../uploads.js';
 import { emitToProject } from '../socket.js';
+import { logActivity } from '../activityLog.js';
 
 const router = Router();
 const upload = multer({
@@ -68,6 +69,7 @@ router.post(
       );
       emitToProject(req.task.project_id, 'attachments:changed',
         { taskId: req.task.id, count: await countFor(req.task.id) }, req.get('x-socket-id'));
+      logActivity({ projectId: req.task.project_id, userId: req.userId, kind: 'attachment_added', taskId: req.task.id, meta: { title: req.task.title, file: name } });
       res.status(201).json(rows[0]);
     } catch (e) {
       if (req.file) removeFiles([req.file.filename]);

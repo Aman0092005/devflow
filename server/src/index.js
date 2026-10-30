@@ -21,6 +21,9 @@ import aiRoutes from './routes/ai.js';
 import activityRoutes from './routes/activity.js';
 import commentRoutes from './routes/comments.js';
 import { startReminders } from './reminders.js';
+import { invitePreview, inviteAuthed } from './routes/invites.js';
+import feedRoutes from './routes/feed.js';
+import labelRoutes from './routes/labels.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -35,6 +38,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 // Public: GitHub redirects the browser here with no login header, so this must come before any requireAuth route.
 app.get('/api/github/callback', githubCallback);
+app.get('/api/invites/:token', invitePreview); // public: shows which project a link is for
 app.use('/api/projects', requireAuth, projectRoutes);
 app.use('/api', requireAuth, taskRoutes);
 app.use('/api', requireAuth, memberRoutes);
@@ -50,6 +54,9 @@ app.use('/api', requireAuth, githubProject);
 app.use('/api', requireAuth, aiRoutes);
 app.use('/api/activity', requireAuth, activityRoutes);
 app.use('/api', requireAuth, commentRoutes);
+app.use('/api', requireAuth, inviteAuthed);
+app.use('/api', requireAuth, feedRoutes);
+app.use('/api', requireAuth, labelRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

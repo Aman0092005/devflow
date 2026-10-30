@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { fmtDate } from '../dates.js';
+import { useLiveRefresh } from '../useLive.js';
 
 function Bars({ data, tone, label, empty }) {
   if (data.every((d) => d.n === 0)) return <p className="muted chart-empty">{empty}</p>;
@@ -44,7 +45,9 @@ function HBars({ rows, tone, empty }) {
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  useEffect(() => { api('/analytics').then(setData).catch((e) => setError(e.message)); }, []);
+  const load = () => api('/analytics').then(setData).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+  useLiveRefresh(load);
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p className="muted">Loading…</p>;

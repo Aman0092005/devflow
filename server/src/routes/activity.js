@@ -13,7 +13,7 @@ router.get('/', async (req, res, next) => {
     const tzKnown = typeof req.query.tz === 'string' && (await query('SELECT 1 FROM pg_timezone_names WHERE name=$1', [req.query.tz])).rowCount > 0;
     const tz = tzKnown ? req.query.tz : 'UTC';
 
-    const [events, focus, due] = await Promise.all([
+    const [events, focus, due, upNext] = await Promise.all([
       // Activity = tasks you finished (assigned to you, or unassigned) + DSA solved + DSA revisions + notes written.
       query(
         `WITH ev AS (
@@ -37,6 +37,15 @@ router.get('/', async (req, res, next) => {
       query(
         `SELECT COUNT(*)::int AS n FROM dsa_problems
          WHERE user_id = $1 AND status <> 'todo' AND next_review IS NOT NULL AND next_review <= $2::date`, [uid, today]),
+      // Suggestions when nothing is urgent: your highest-priority To do tasks that aren't already listed above.
+      query(
+        `SELECT t.id, t.title, t.due_date, t.priority, t.status, t.project_id, p.name AS project_name
+         FROM tasks t JOIN projects p ON p.id = t.project_id
+         JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+         WHERE t.status = 'todo' AND (t.assignee_id = $1 OR t.assignee_id IS NULL)
+           AND NOT (t.due_date IS NOT NULL AND t.due_date <= $2::date)
+         ORDER BY CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, (t.due_date IS NULL), t.due_date, t.position
+         LIMIT 3`, [uid, today]),
     ]);
 
     const counts = Object.fromEntries(events.rows.map((r) => [r.day, r.n]));
@@ -44,7 +53,7 @@ router.get('/', async (req, res, next) => {
     let streak = 0;
     while (counts[cursor]) { streak++; cursor = shift(cursor, -1); }
 
-    res.json({ today, days: events.rows, streak, today_count: counts[today] || 0, focus: focus.rows, revise_due: due.rows[0].n });
+    res.json({ today, days: events.rows, streak, today_count: counts[today] || 0, focus: focus.rows, up_next: upNext.rows, revise_due: due.rows[0].n });
   } catch (e) { next(e); }
 });
 

@@ -4,13 +4,16 @@ import { getRole } from '../access.js';
 import { emitToProject } from '../socket.js';
 import { notify } from '../notify.js';
 import { removeFiles } from '../uploads.js';
+import { logActivity } from '../activityLog.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
 const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count,
-    (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count
+    (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count,
+    COALESCE((SELECT array_agg(tl.label_id ORDER BY tl.label_id) FROM task_labels tl WHERE tl.task_id = t.id), '{}') AS label_ids
   FROM tasks t WHERE t.project_id = $1 ORDER BY t.status, t.position, t.id`;
+const validDay = (v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= '2000-01-01' && v <= '2100-12-31');
 const LABELS = { todo: 'To do', in_progress: 'In progress', done: 'Done' };
 
 const loadTask = async (taskId, userId) =>
@@ -35,6 +38,7 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
     const { title, description = '', priority = 'medium', due_date = null, assignee_id = null } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: 'Give the task a title.' });
     if (!PRIORITIES.includes(priority)) return res.status(400).json({ error: 'Invalid priority.' });
+    if (!validDay(due_date)) return res.status(400).json({ error: 'The due date must be a real date between 2000 and 2100.' });
     if (!(await getRole(projectId, req.userId))) return res.status(404).json({ error: 'Project not found.' });
     if (assignee_id && !(await getRole(projectId, assignee_id)))
       return res.status(400).json({ error: 'You can only assign tasks to project members.' });
@@ -45,6 +49,7 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
       [projectId, title.trim(), description, priority, due_date || null, assignee_id || null]
     );
     emitToProject(projectId, 'task:created', { task: rows[0] }, req.get('x-socket-id'));
+    logActivity({ projectId: Number(projectId), userId: req.userId, kind: 'task_created', taskId: rows[0].id, meta: { title: rows[0].title } });
     if (assignee_id) await notify({ userId: assignee_id, actorId: req.userId, projectId: Number(projectId), taskId: rows[0].id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.status(201).json(rows[0]);
   } catch (e) { next(e); }
@@ -56,6 +61,7 @@ router.patch('/tasks/:id', async (req, res, next) => {
     if (!task) return res.status(404).json({ error: 'Task not found.' });
     const { title, description, priority, due_date, assignee_id } = req.body;
     if (priority && !PRIORITIES.includes(priority)) return res.status(400).json({ error: 'Invalid priority.' });
+    if (!validDay(due_date)) return res.status(400).json({ error: 'The due date must be a real date between 2000 and 2100.' });
     if (assignee_id && !(await getRole(task.project_id, assignee_id)))
       return res.status(400).json({ error: 'You can only assign tasks to project members.' });
     const { rows } = await query(
@@ -69,6 +75,10 @@ router.patch('/tasks/:id', async (req, res, next) => {
        assignee_id || null, 'assignee_id' in req.body]
     );
     emitToProject(task.project_id, 'task:updated', { task: rows[0] }, req.get('x-socket-id'));
+    if ('assignee_id' in req.body && (assignee_id ? Number(assignee_id) : null) !== task.assignee_id) {
+      const who = assignee_id ? (await query('SELECT name FROM users WHERE id=$1', [assignee_id])).rows[0]?.name : null;
+      logActivity({ projectId: task.project_id, userId: req.userId, kind: assignee_id ? 'task_assigned' : 'task_unassigned', taskId: task.id, meta: { title: rows[0].title, assignee: who } });
+    }
     if (assignee_id && Number(assignee_id) !== task.assignee_id)
       await notify({ userId: assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_assigned', text: `assigned you “${rows[0].title}”` });
     res.json(rows[0]);
@@ -100,6 +110,8 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     await client.query('COMMIT');
     const all = await query(TASK_SELECT, [task.project_id]);
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
+    if (status !== task.status)
+      logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_moved', taskId: task.id, meta: { title: task.title, from: task.status, to: status } });
     if (task.assignee_id && status !== task.status)
       await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
     res.json({ ok: true });
@@ -119,6 +131,7 @@ router.delete('/tasks/:id', async (req, res, next) => {
     await query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
     removeFiles(files.rows.map((f) => f.stored_name));
     emitToProject(task.project_id, 'task:deleted', { id: task.id }, req.get('x-socket-id'));
+    logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_deleted', meta: { title: task.title } });
     res.status(204).end();
   } catch (e) { next(e); }
 });
