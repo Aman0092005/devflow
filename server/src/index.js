@@ -24,6 +24,7 @@ import { startReminders } from './reminders.js';
 import { invitePreview, inviteAuthed } from './routes/invites.js';
 import feedRoutes from './routes/feed.js';
 import labelRoutes from './routes/labels.js';
+import checklistRoutes from './routes/checklist.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -57,6 +58,7 @@ app.use('/api', requireAuth, commentRoutes);
 app.use('/api', requireAuth, inviteAuthed);
 app.use('/api', requireAuth, feedRoutes);
 app.use('/api', requireAuth, labelRoutes);
+app.use('/api', requireAuth, checklistRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

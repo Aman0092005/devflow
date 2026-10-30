@@ -11,7 +11,9 @@ const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
 const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count,
     (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count,
-    COALESCE((SELECT array_agg(tl.label_id ORDER BY tl.label_id) FROM task_labels tl WHERE tl.task_id = t.id), '{}') AS label_ids
+    COALESCE((SELECT array_agg(tl.label_id ORDER BY tl.label_id) FROM task_labels tl WHERE tl.task_id = t.id), '{}') AS label_ids,
+    (SELECT COUNT(*)::int FROM task_checklist_items ci WHERE ci.task_id = t.id) AS checklist_total,
+    (SELECT COUNT(*)::int FROM task_checklist_items ci WHERE ci.task_id = t.id AND ci.done) AS checklist_done
   FROM tasks t WHERE t.project_id = $1 ORDER BY t.status, t.position, t.id`;
 const validDay = (v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= '2000-01-01' && v <= '2100-12-31');
 const LABELS = { todo: 'To do', in_progress: 'In progress', done: 'Done' };

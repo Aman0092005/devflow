@@ -190,3 +190,14 @@ CREATE TABLE IF NOT EXISTS task_labels (
   label_id INT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
   PRIMARY KEY (task_id, label_id)
 );
+
+-- Checklists
+CREATE TABLE IF NOT EXISTS task_checklist_items (
+  id SERIAL PRIMARY KEY,
+  task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  done BOOLEAN NOT NULL DEFAULT false,
+  position INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS checklist_task_idx ON task_checklist_items(task_id, position);

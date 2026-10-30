@@ -89,6 +89,7 @@ export default function Board() {
     const handlers = {
       'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
       'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? { ...t, ...task } : t))); flash(task.id); },
+      'checklist:changed': ({ taskId, total, done }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, checklist_total: total, checklist_done: done } : t))),
       'task:labels': ({ taskId, label_ids }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, label_ids } : t))),
       'labels:changed': ({ labels: list }) => applyLabels(list),
       'comment:created': ({ comment, count }) => setTasks((p) => p.map((t) => (t.id === comment.task_id ? { ...t, comment_count: count } : t))),
@@ -352,6 +353,11 @@ export default function Board() {
                         {t.label_ids.map((lid) => labelById[lid]).filter(Boolean).map((l) => <span key={l.id} className="label"><i style={{ background: l.color }} />{l.name}</span>)}
                       </div>
                     )}
+                    {t.checklist_total > 0 && (
+                      <div className="bar mini" role="progressbar" aria-label="Checklist progress" aria-valuenow={t.checklist_done} aria-valuemin={0} aria-valuemax={t.checklist_total}>
+                        <span style={{ width: `${(t.checklist_done / t.checklist_total) * 100}%`, background: 'var(--green)' }} />
+                      </div>
+                    )}
                     <div className="meta">
                       <span className="tag">{t.priority}</span>
                       {t.github_ref && <a className="tag gh" href={t.github_url} target="_blank" rel="noreferrer" draggable="false" title="Open on GitHub">GH {t.github_ref}</a>}
@@ -362,6 +368,12 @@ export default function Board() {
                         </span>
                       )}
                       {t.due_date && <span className={t.status !== 'done' && t.due_date.slice(0, 10) < today() ? 'due' : 'muted'}>Due {fmtDate(t.due_date)}</span>}
+                      {t.checklist_total > 0 && (
+                        <span className="muted clip" title="Checklist">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 11 3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                          {t.checklist_done}/{t.checklist_total}
+                        </span>
+                      )}
                       {t.comment_count > 0 && (
                         <span className="muted clip" title="Comments">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
@@ -391,6 +403,7 @@ export default function Board() {
           onCount={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, attachment_count: count } : x)))}
           onCreated={(t) => setTasks((p) => (p.some((x) => x.id === t.id) ? p : [...p, t]))}
           isOwner={isOwner} labels={labels} onLabelsList={applyLabels}
+          onChecklistCounts={(taskId, total, done) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, checklist_total: total, checklist_done: done } : x)))}
           onTaskLabels={(taskId, ids) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, label_ids: ids } : x)))}
           onComments={(taskId, count) => setTasks((p) => p.map((x) => (x.id === taskId ? { ...x, comment_count: count } : x)))} />
       )}

@@ -4,7 +4,7 @@ import { query } from '../db.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 
 const router = Router();
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email });
+const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, reminders: u.reminders !== false });
 
 router.post('/register', async (req, res, next) => {
   try {
@@ -57,6 +57,29 @@ router.put('/timezone', requireAuth, async (req, res, next) => {
 router.put('/reminders', requireAuth, async (req, res, next) => {
   try {
     await query('UPDATE users SET reminders=$2 WHERE id=$1', [req.userId, !!req.body.enabled]);
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+router.put('/profile', requireAuth, async (req, res, next) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Your name can’t be empty.' });
+    if (name.length > 60) return res.status(400).json({ error: 'Names can be up to 60 characters.' });
+    const { rows } = await query('UPDATE users SET name=$2 WHERE id=$1 RETURNING *', [req.userId, name]);
+    res.json({ user: publicUser(rows[0]) });
+  } catch (e) { next(e); }
+});
+
+// Wrong current password is a 400, not a 401: a 401 would sign the person out of the app.
+router.put('/password', requireAuth, async (req, res, next) => {
+  try {
+    const fresh = req.body.next;
+    if (typeof fresh !== 'string' || fresh.length < 8) return res.status(400).json({ error: 'The new password must be at least 8 characters.' });
+    const { rows } = await query('SELECT password_hash FROM users WHERE id=$1', [req.userId]);
+    if (!rows[0] || !(await bcrypt.compare(String(req.body.current || ''), rows[0].password_hash)))
+      return res.status(400).json({ error: 'Your current password is incorrect.' });
+    await query('UPDATE users SET password_hash=$2 WHERE id=$1', [req.userId, await bcrypt.hash(fresh, 10)]);
     res.status(204).end();
   } catch (e) { next(e); }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 
-export function SubtaskSuggester({ task, onCreated }) {
+export function SubtaskSuggester({ task, onCreated, onChecklist }) {
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -28,13 +28,23 @@ export function SubtaskSuggester({ task, onCreated }) {
     finally { setAdding(false); }
   };
 
+  const addChecklist = async () => {
+    setAdding(true); setError('');
+    try {
+      for (const s of items.filter((i) => i.on)) await api(`/tasks/${task.id}/checklist`, { method: 'POST', body: { text: s.title } });
+      setItems(null);
+      onChecklist?.();
+    } catch (err) { setError(err.message); }
+    finally { setAdding(false); }
+  };
+
   const chosen = items?.filter((i) => i.on).length || 0;
   return (
     <div className="ai-box">
       {!items && <button type="button" className="btn ghost" onClick={suggest} disabled={busy}>{busy ? 'Thinking…' : 'Suggest subtasks with AI'}</button>}
       {items && (
         <>
-          <p className="muted">Suggested subtasks. Untick any you don’t want; they’re added to To do. AI can be wrong, so review them.</p>
+          <p className="muted">Suggested subtasks. Untick any you don’t want. Add them as separate cards in To do, or as items on this task’s checklist. AI can be wrong, so review them.</p>
           <ul className="files">
             {items.map((s, i) => (
               <li key={i}>
@@ -47,6 +57,7 @@ export function SubtaskSuggester({ task, onCreated }) {
           </ul>
           <div className="modal-foot">
             <button type="button" className="link" onClick={() => setItems(null)}>Discard</button>
+            <button type="button" className="btn ghost" onClick={addChecklist} disabled={adding || chosen === 0}>Add as checklist</button>
             <button type="button" className="btn" onClick={add} disabled={adding || chosen === 0}>{adding ? 'Adding…' : `Add ${chosen} to board`}</button>
           </div>
         </>

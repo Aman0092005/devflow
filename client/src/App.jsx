@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
-import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import SearchPalette from './SearchPalette.jsx';
 import { useAuth } from './auth.jsx';
 import Login from './pages/Login.jsx';
@@ -12,6 +12,7 @@ import Dsa from './pages/Dsa.jsx';
 import Analytics from './pages/Analytics.jsx';
 import Integrations from './pages/Integrations.jsx';
 import Invite from './pages/Invite.jsx';
+import Settings from './pages/Settings.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
@@ -44,7 +45,7 @@ function Shell() {
           <NavLink to="/integrations">Integrations</NavLink>
         </nav>
         <div className="sidebar-foot">
-          <span>{user.name}</span>
+          <Link to="/settings" className="settings-link" title="Settings">{user.name} · Settings</Link>
           <button className="link" onClick={logout}>Sign out</button>
         </div>
       </aside>
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="dsa" element={<Dsa />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="integrations" element={<Integrations />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

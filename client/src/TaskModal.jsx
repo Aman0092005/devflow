@@ -4,15 +4,17 @@ import { getSocket } from './socket.js';
 import { SubtaskSuggester } from './AiTools.jsx';
 import Comments from './Comments.jsx';
 import LabelPicker from './LabelPicker.jsx';
+import Checklist from './Checklist.jsx';
 import { isValidDate } from './dates.js';
 
 const MAX = 10 * 1024 * 1024;
 const fmtSize = (b) => (b < 1024 ? `${b} B` : b < MAX / 10 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, onComments, isOwner, labels = [], onLabelsList, onTaskLabels }) {
+export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, onComments, isOwner, labels = [], onLabelsList, onTaskLabels, onChecklistCounts }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [due, setDue] = useState(task.due_date ? task.due_date.slice(0, 10) : '');
+  const [clVersion, setClVersion] = useState(0);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -102,7 +104,9 @@ export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, 
 
         <LabelPicker task={task} labels={labels} isOwner={isOwner} onLabelsList={onLabelsList} onTaskLabels={onTaskLabels} />
 
-        <SubtaskSuggester task={task} onCreated={onCreated} />
+        <Checklist task={task} refresh={clVersion} onCounts={onChecklistCounts} />
+
+        <SubtaskSuggester task={task} onCreated={onCreated} onChecklist={() => setClVersion((v) => v + 1)} />
 
         <h3>Attachments</h3>
         <div className={`dropzone ${over ? 'over' : ''}`}

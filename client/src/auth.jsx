@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', data.token);
     setUser(data.user);
   };
+  const updateUser = (patch) => setUser((u) => ({ ...u, ...patch }));
   const logout = () => {
     localStorage.removeItem('token');
     disconnectSocket();
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authenticate, logout }}>
+    <AuthContext.Provider value={{ user, loading, authenticate, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
