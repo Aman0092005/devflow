@@ -360,7 +360,7 @@ export default function Board() {
                     )}
                     <div className="meta">
                       <span className="tag">{t.priority}</span>
-                      {t.github_ref && <a className="tag gh" href={t.github_url} target="_blank" rel="noreferrer" draggable="false" title="Open on GitHub">GH {t.github_ref}</a>}
+                      {t.github_ref && <a className="tag gh" href={t.github_url} target="_blank" rel="noreferrer" draggable="false" title="Open on GitHub">GH {t.github_ref}{t.github_state === 'closed' ? ' · closed' : ''}</a>}
                       {t.attachment_count > 0 && (
                         <span className="muted clip" title="Attachments">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>

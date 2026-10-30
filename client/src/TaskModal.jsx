@@ -5,6 +5,7 @@ import { SubtaskSuggester } from './AiTools.jsx';
 import Comments from './Comments.jsx';
 import LabelPicker from './LabelPicker.jsx';
 import Checklist from './Checklist.jsx';
+import FocusPanel from './FocusPanel.jsx';
 import { isValidDate } from './dates.js';
 
 const MAX = 10 * 1024 * 1024;
@@ -103,6 +104,8 @@ export default function TaskModal({ task, onClose, onSaved, onCount, onCreated, 
         </label>
 
         <LabelPicker task={task} labels={labels} isOwner={isOwner} onLabelsList={onLabelsList} onTaskLabels={onTaskLabels} />
+
+        <FocusPanel task={task} />
 
         <Checklist task={task} refresh={clVersion} onCounts={onChecklistCounts} />
 

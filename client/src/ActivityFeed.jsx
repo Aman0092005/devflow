@@ -17,6 +17,8 @@ const sentence = (a) => {
     case 'task_deleted': return `deleted ${t}`;
     case 'task_comment': return `commented on ${t}`;
     case 'attachment_added': return `attached ${m.file || 'a file'} to ${t}`;
+    case 'github_closed': return `closed GitHub issue ${m.ref} for ${t}`;
+    case 'github_reopened': return `reopened GitHub issue ${m.ref} for ${t}`;
     case 'task_imported': return `imported ${t} from GitHub (${m.ref})`;
     case 'member_added': return `added ${m.name || 'someone'} to the project`;
     case 'member_removed': return `removed ${m.name || 'someone'} from the project`;

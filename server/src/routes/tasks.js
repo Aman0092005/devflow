@@ -5,6 +5,7 @@ import { emitToProject } from '../socket.js';
 import { notify } from '../notify.js';
 import { removeFiles } from '../uploads.js';
 import { logActivity } from '../activityLog.js';
+import { syncIssue } from '../githubSync.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
@@ -114,6 +115,7 @@ router.post('/tasks/:id/move', async (req, res, next) => {
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
     if (status !== task.status)
       logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_moved', taskId: task.id, meta: { title: task.title, from: task.status, to: status } });
+    if (task.github_ref && (status === 'done') !== (task.status === 'done')) syncIssue(task, status, req.userId); // closes/reopens the GitHub issue if sync is on
     if (task.assignee_id && status !== task.status)
       await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
     res.json({ ok: true });

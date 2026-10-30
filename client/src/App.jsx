@@ -13,6 +13,8 @@ import Analytics from './pages/Analytics.jsx';
 import Integrations from './pages/Integrations.jsx';
 import Invite from './pages/Invite.jsx';
 import Settings from './pages/Settings.jsx';
+import { FocusProvider } from './focus.jsx';
+import FocusPill from './FocusPill.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
 function Shell() {
@@ -32,6 +34,7 @@ function Shell() {
   if (loading) return <p className="center-note">Loading your workspace…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return (
+    <FocusProvider>
     <div className="shell">
       <aside className="sidebar">
         <div className="brand-row"><div className="brand">DevFlow</div><NotificationBell /></div>
@@ -44,6 +47,7 @@ function Shell() {
           <NavLink to="/analytics">Analytics</NavLink>
           <NavLink to="/integrations">Integrations</NavLink>
         </nav>
+        <FocusPill />
         <div className="sidebar-foot">
           <Link to="/settings" className="settings-link" title="Settings">{user.name} · Settings</Link>
           <button className="link" onClick={logout}>Sign out</button>
@@ -52,6 +56,7 @@ function Shell() {
       <main className="main"><Outlet /></main>
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
+    </FocusProvider>
   );
 }
 

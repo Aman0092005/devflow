@@ -3,6 +3,8 @@ import { api } from '../api.js';
 import { fmtDate } from '../dates.js';
 import { useLiveRefresh } from '../useLive.js';
 
+const fmtMin = (m) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
+
 function Bars({ data, tone, label, empty }) {
   if (data.every((d) => d.n === 0)) return <p className="muted chart-empty">{empty}</p>;
   const W = 560, H = 150, bw = W / data.length;
@@ -63,6 +65,7 @@ export default function Analytics() {
         <div className="stat"><b className={kpi.overdue ? 'due' : ''}>{kpi.overdue}</b><span>Overdue open tasks</span></div>
         <div className="stat"><b>{kpi.avg_days === null ? '–' : `${kpi.avg_days}d`}</b><span>Avg time to finish a task</span></div>
         <div className="stat"><b>{kpi.streak}</b><span>DSA streak (days)</span></div>
+        <div className="stat"><b>{fmtMin(kpi.focus_7d_min || 0)}</b><span>Focused, last 7 days</span></div>
       </div>
 
       <div className="grid-2">
@@ -75,6 +78,11 @@ export default function Analytics() {
           <h2>DSA problems solved, last 14 days</h2>
           <Bars data={data.dsaPerDay} tone="chalk" label="DSA problems solved per day over the last 14 days"
             empty="No problems solved in this period. Mark one as Solved in the tracker." />
+        </section>
+        <section className="panel">
+          <h2>Focus time, last 14 days (minutes)</h2>
+          <Bars data={data.focusPerDay} tone="green" label="Minutes of focus per day over the last 14 days"
+            empty="No focus sessions yet. Open a task and click Start focus session." />
         </section>
         <section className="panel">
           <h2>Solved by topic</h2>

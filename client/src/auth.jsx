@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
   const updateUser = (patch) => setUser((u) => ({ ...u, ...patch }));
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('devflow-focus');
     disconnectSocket();
     setUser(null);
   };

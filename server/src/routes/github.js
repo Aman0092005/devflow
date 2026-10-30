@@ -94,10 +94,10 @@ githubProject.get('/projects/:projectId/github', async (req, res, next) => {
     const { projectId } = req.params;
     if (!(await getRole(projectId, req.userId))) return res.status(404).json({ error: 'Project not found.' });
     const [link, mine] = await Promise.all([
-      query(`SELECT pr.repo, u.name AS linked_by_name FROM project_repos pr JOIN users u ON u.id = pr.linked_by WHERE pr.project_id=$1`, [projectId]),
+      query(`SELECT pr.repo, pr.sync_status, u.name AS linked_by_name FROM project_repos pr JOIN users u ON u.id = pr.linked_by WHERE pr.project_id=$1`, [projectId]),
       query('SELECT 1 FROM github_accounts WHERE user_id=$1', [req.userId]),
     ]);
-    res.json({ configured: githubConfigured(), myConnected: mine.rowCount > 0, repo: link.rows[0]?.repo || null, linked_by_name: link.rows[0]?.linked_by_name || null });
+    res.json({ configured: githubConfigured(), myConnected: mine.rowCount > 0, repo: link.rows[0]?.repo || null, linked_by_name: link.rows[0]?.linked_by_name || null, sync: !!link.rows[0]?.sync_status });
   } catch (e) { next(e); }
 });
 
@@ -118,6 +118,15 @@ githubProject.put('/projects/:projectId/github', async (req, res, next) => {
     cache.clear();
     res.json({ repo: found.full_name });
   } catch (e) { sendGitHubError(res, e, next); }
+});
+
+githubProject.patch('/projects/:projectId/github', async (req, res, next) => {
+  try {
+    if ((await getRole(req.params.projectId, req.userId)) !== 'owner') return res.status(403).json({ error: 'Only the project owner can change this.' });
+    const r = await query('UPDATE project_repos SET sync_status=$2 WHERE project_id=$1', [req.params.projectId, !!req.body.sync]);
+    if (!r.rowCount) return res.status(404).json({ error: 'No repository is linked to this project.' });
+    res.json({ sync: !!req.body.sync });
+  } catch (e) { next(e); }
 });
 
 githubProject.delete('/projects/:projectId/github', async (req, res, next) => {
@@ -187,10 +196,10 @@ githubProject.post('/projects/:projectId/github/import', async (req, res, next) 
     if (issue.pull_request) return res.status(400).json({ error: 'That is a pull request, not an issue.' });
     const description = `${(issue.body || '').slice(0, 2000)}\n\nImported from GitHub: ${issue.html_url}`.trim();
     const { rows } = await query(
-      `INSERT INTO tasks (project_id, title, description, github_url, github_ref, position)
-       VALUES ($1,$2,$3,$4,$5,(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
+      `INSERT INTO tasks (project_id, title, description, github_url, github_ref, github_state, position)
+       VALUES ($1,$2,$3,$4,$5,$6,(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
        ON CONFLICT DO NOTHING RETURNING *`,
-      [projectId, issue.title, description, issue.html_url, `#${number}`]
+      [projectId, issue.title, description, issue.html_url, `#${number}`, issue.state]
     );
     if (!rows[0]) return res.status(409).json({ error: 'That issue is already on the board.' });
     const task = { ...rows[0], attachment_count: 0 };

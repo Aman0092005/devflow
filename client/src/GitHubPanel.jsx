@@ -42,6 +42,13 @@ export default function GitHubPanel({ projectId, isOwner, onImported }) {
     if (!confirm('Unlink this repository? Tasks already imported stay on the board.')) return;
     try { await api(`/projects/${projectId}/github`, { method: 'DELETE' }); setItems(null); await loadInfo(); } catch (err) { setError(err.message); }
   };
+  const toggleSync = () => {
+    const next = !info.sync;
+    setInfo((i) => ({ ...i, sync: next }));
+    api(`/projects/${projectId}/github`, { method: 'PATCH', body: { sync: next } })
+      .catch((err) => { setInfo((i) => ({ ...i, sync: !next })); setError(err.message); });
+  };
+
   const importIssue = async (issue) => {
     setError('');
     try {
@@ -86,6 +93,12 @@ export default function GitHubPanel({ projectId, isOwner, onImported }) {
             </span>
           </div>
           <p className="muted">Linked by {info.linked_by_name}. Activity is read through their GitHub connection.</p>
+          {isOwner && (
+            <label className="check">
+              <input type="checkbox" checked={!!info.sync} onChange={toggleSync} />
+              Close an imported issue when its task is moved to Done (reopen it if moved back)
+            </label>
+          )}
 
           <div className="tabs" role="tablist">
             {TABS.map(([k, label]) => (

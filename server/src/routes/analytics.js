@@ -13,7 +13,7 @@ router.get('/', async (req, res, next) => {
   try {
     const uid = req.userId;
     const memberTasks = 'FROM tasks t JOIN project_members pm ON pm.project_id = t.project_id AND pm.user_id = $1';
-    const [kpi, tasksPerDay, dsaPerDay, topics, workload, solvedDays, todayRow] = await Promise.all([
+    const [kpi, tasksPerDay, dsaPerDay, topics, workload, solvedDays, todayRow, focusDays] = await Promise.all([
       query(
         `SELECT COUNT(*) FILTER (WHERE t.completed_at >= now() - interval '7 days')::int AS done_7d,
            COUNT(*) FILTER (WHERE t.status <> 'done' AND t.due_date < CURRENT_DATE)::int AS overdue,
@@ -32,6 +32,13 @@ router.get('/', async (req, res, next) => {
       query(`SELECT DISTINCT solved_at FROM dsa_problems WHERE user_id = $1 AND status = 'solved' AND solved_at IS NOT NULL
              ORDER BY solved_at DESC LIMIT 400`, [uid]),
       query('SELECT CURRENT_DATE AS today'),
+      // Minutes of focus per day, last 14 days.
+      query(
+        `SELECT d::date AS day, COALESCE(c.n, 0)::int AS n
+         FROM generate_series((CURRENT_DATE - 13)::timestamp, CURRENT_DATE::timestamp, interval '1 day') d
+         LEFT JOIN (SELECT started_at::date AS day, ROUND(SUM(seconds) / 60.0)::int AS n FROM focus_sessions
+                    WHERE user_id = $1 AND started_at >= CURRENT_DATE - 14 GROUP BY 1) c ON c.day = d::date
+         ORDER BY d`, [uid]),
     ]);
 
     // Current solving streak: consecutive days ending today (or yesterday if nothing solved yet today).
@@ -44,8 +51,10 @@ router.get('/', async (req, res, next) => {
 
     const k = kpi.rows[0];
     res.json({
-      kpi: { done_7d: k.done_7d, overdue: k.overdue, avg_days: k.avg_days === null ? null : Number(k.avg_days), streak },
+      kpi: { done_7d: k.done_7d, overdue: k.overdue, avg_days: k.avg_days === null ? null : Number(k.avg_days), streak,
+        focus_7d_min: focusDays.rows.slice(-7).reduce((s, r) => s + r.n, 0) },
       tasksPerDay: tasksPerDay.rows,
+      focusPerDay: focusDays.rows,
       dsaPerDay: dsaPerDay.rows,
       topics: topics.rows,
       workload: workload.rows,

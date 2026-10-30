@@ -201,3 +201,17 @@ CREATE TABLE IF NOT EXISTS task_checklist_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS checklist_task_idx ON task_checklist_items(task_id, position);
+
+-- Focus timer + GitHub write-back
+CREATE TABLE IF NOT EXISTS focus_sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  task_id INT REFERENCES tasks(id) ON DELETE SET NULL,
+  started_at TIMESTAMPTZ NOT NULL,
+  seconds INT NOT NULL CHECK (seconds > 0),
+  completed BOOLEAN NOT NULL DEFAULT false
+);
+CREATE UNIQUE INDEX IF NOT EXISTS focus_unique_idx ON focus_sessions(user_id, started_at);
+CREATE INDEX IF NOT EXISTS focus_task_idx ON focus_sessions(task_id);
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_state TEXT;
+ALTER TABLE project_repos ADD COLUMN IF NOT EXISTS sync_status BOOLEAN NOT NULL DEFAULT false;

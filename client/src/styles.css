@@ -373,3 +373,11 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 3px;
 :root[data-theme='light'] .btn:not(.ghost), :root[data-theme='light'] .bell-count, :root[data-theme='light'] .cal-day.today .cal-num { background: #f5d547; }
 :root[data-theme='light'] .notif:hover { background: rgba(20,33,58,.05); }
 :root[data-theme='light'] .overlay { background: rgba(20,33,58,.45); }
+
+/* Focus timer */
+.focus-pill { border: 1px solid var(--chalk); border-radius: 6px; padding: .65rem .75rem; display: flex; flex-direction: column; gap: .35rem; }
+.focus-pill p { margin: 0; font-size: .9rem; }
+.focus-time { font: 700 1.7rem var(--head); font-variant-numeric: tabular-nums; line-height: 1; }
+.focus-task { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.focus-panel { margin: .25rem 0; }
+.focus-panel h3 { margin: 0; }
