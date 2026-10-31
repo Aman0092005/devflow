@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { fmtDate } from '../dates.js';
 import DailyFocus from '../DailyFocus.jsx';
+import GoalsCard from '../GoalsCard.jsx';
 import { useLiveRefresh } from '../useLive.js';
 
 const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -37,6 +38,7 @@ export default function Dashboard() {
       </div>
 
       <DailyFocus />
+      <GoalsCard />
 
       <div className="grid-2">
         <section className="panel">

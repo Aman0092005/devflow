@@ -38,6 +38,7 @@ export default function SearchPalette({ open, onClose }) {
     ...data.tasks.map((t) => ({ key: `t${t.id}`, group: 'Tasks', label: t.title, sub: `${t.project_name} · ${STATUS[t.status]}`, go: () => navigate(`/projects/${t.project_id}`, { state: { openTask: t.id } }) })),
     ...data.notes.map((n) => ({ key: `n${n.id}`, group: 'Notes', label: n.title, sub: n.preview, go: () => navigate('/notes', { state: { open: n.id } }) })),
     ...data.problems.map((p) => ({ key: `d${p.id}`, group: 'DSA problems', label: p.title, sub: `${p.topic} · ${p.difficulty}`, go: () => navigate('/dsa', { state: { q: p.title } }) })),
+    ...(data.snippets || []).map((s) => ({ key: `s${s.id}`, group: 'Snippets', label: s.title, sub: s.language, go: () => navigate('/snippets', { state: { q: s.title } }) })),
   ] : [];
 
   useEffect(() => { document.getElementById(`sr-${active}`)?.scrollIntoView({ block: 'nearest' }); }, [active]);

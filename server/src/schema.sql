@@ -215,3 +215,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS focus_unique_idx ON focus_sessions(user_id, st
 CREATE INDEX IF NOT EXISTS focus_task_idx ON focus_sessions(task_id);
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS github_state TEXT;
 ALTER TABLE project_repos ADD COLUMN IF NOT EXISTS sync_status BOOLEAN NOT NULL DEFAULT false;
+
+-- Snippet library + weekly goals
+CREATE TABLE IF NOT EXISTS snippets (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  project_id INT REFERENCES projects(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  language TEXT NOT NULL DEFAULT 'text',
+  code TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS snippets_user_idx ON snippets(user_id, updated_at DESC);
+CREATE TABLE IF NOT EXISTS goals (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  metric TEXT NOT NULL CHECK (metric IN ('tasks_done','dsa_solved','dsa_revised','focus_minutes')),
+  target INT NOT NULL CHECK (target > 0),
+  UNIQUE (user_id, metric)
+);

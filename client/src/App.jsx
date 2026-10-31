@@ -9,6 +9,7 @@ import Projects from './pages/Projects.jsx';
 import Board from './pages/Board.jsx';
 import Notes from './pages/Notes.jsx';
 import Dsa from './pages/Dsa.jsx';
+import Snippets from './pages/Snippets.jsx';
 import Analytics from './pages/Analytics.jsx';
 import Integrations from './pages/Integrations.jsx';
 import Invite from './pages/Invite.jsx';
@@ -44,6 +45,7 @@ function Shell() {
           <NavLink to="/projects">Projects</NavLink>
           <NavLink to="/notes">Notes</NavLink>
           <NavLink to="/dsa">DSA tracker</NavLink>
+          <NavLink to="/snippets">Snippets</NavLink>
           <NavLink to="/analytics">Analytics</NavLink>
           <NavLink to="/integrations">Integrations</NavLink>
         </nav>
@@ -71,6 +73,7 @@ export default function App() {
         <Route path="projects/:id" element={<Board />} />
         <Route path="notes" element={<Notes />} />
         <Route path="dsa" element={<Dsa />} />
+        <Route path="snippets" element={<Snippets />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="settings" element={<Settings />} />

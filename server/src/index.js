@@ -26,6 +26,8 @@ import feedRoutes from './routes/feed.js';
 import labelRoutes from './routes/labels.js';
 import checklistRoutes from './routes/checklist.js';
 import focusRoutes from './routes/focus.js';
+import snippetRoutes from './routes/snippets.js';
+import goalRoutes from './routes/goals.js';
 import { initSocket } from './socket.js';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set. Copy .env.example to .env.');
@@ -55,6 +57,8 @@ app.use('/api/github', requireAuth, githubAccount);
 app.use('/api', requireAuth, githubProject);
 app.use('/api', requireAuth, aiRoutes);
 app.use('/api/activity', requireAuth, activityRoutes);
+app.use('/api/snippets', requireAuth, snippetRoutes);
+app.use('/api/goals', requireAuth, goalRoutes);
 app.use('/api', requireAuth, commentRoutes);
 app.use('/api', requireAuth, inviteAuthed);
 app.use('/api', requireAuth, feedRoutes);
