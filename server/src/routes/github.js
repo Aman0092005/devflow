@@ -196,8 +196,8 @@ githubProject.post('/projects/:projectId/github/import', async (req, res, next) 
     if (issue.pull_request) return res.status(400).json({ error: 'That is a pull request, not an issue.' });
     const description = `${(issue.body || '').slice(0, 2000)}\n\nImported from GitHub: ${issue.html_url}`.trim();
     const { rows } = await query(
-      `INSERT INTO tasks (project_id, title, description, github_url, github_ref, github_state, position)
-       VALUES ($1,$2,$3,$4,$5,$6,(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
+      `INSERT INTO tasks (project_id, title, description, github_url, github_ref, github_state, column_id, position)
+       VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM project_columns WHERE project_id=$1 AND stage='todo' ORDER BY position LIMIT 1),(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
        ON CONFLICT DO NOTHING RETURNING *`,
       [projectId, issue.title, description, issue.html_url, `#${number}`, issue.state]
     );

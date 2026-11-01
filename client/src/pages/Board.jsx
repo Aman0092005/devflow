@@ -9,18 +9,21 @@ import GitHubPanel from '../GitHubPanel.jsx';
 import AssistantPanel from '../AssistantPanel.jsx';
 import ActivityFeed from '../ActivityFeed.jsx';
 import Calendar from '../Calendar.jsx';
+import { ColumnMenu, AddColumn } from '../Columns.jsx';
+import ShareLink from '../ShareLink.jsx';
+import ExportPanel from '../ExportPanel.jsx';
 import InviteLinks from '../InviteLinks.jsx';
 import { addDays, fmtDate, today } from '../dates.js';
 
 const COLUMNS = [['todo', 'To do'], ['in_progress', 'In progress'], ['done', 'Done']];
 const byPos = (a, b) => a.position - b.position || a.id - b.id;
 
-function applyMove(tasks, id, status, index) {
+function applyMove(tasks, id, column, index) {
   const moving = tasks.find((t) => t.id === id);
   const rest = tasks.filter((t) => t.id !== id);
-  const col = rest.filter((t) => t.status === status).sort(byPos);
-  col.splice(index, 0, { ...moving, status });
-  return [...rest.filter((t) => t.status !== status), ...col.map((t, i) => ({ ...t, position: i }))];
+  const col = rest.filter((t) => t.column_id === column.id).sort(byPos);
+  col.splice(index, 0, { ...moving, column_id: column.id, status: column.stage });
+  return [...rest.filter((t) => t.column_id !== column.id), ...col.map((t, i) => ({ ...t, position: i }))];
 }
 
 export default function Board() {
@@ -47,11 +50,13 @@ export default function Board() {
   const [showAi, setShowAi] = useState(false);
   const [showAct, setShowAct] = useState(false);
   const [labels, setLabels] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [showExp, setShowExp] = useState(false);
   const [view, setView] = useState('board');
 
   useEffect(() => {
-    Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`)])
-      .then(([p, t, m, l]) => { setProject(p); setTasks(t); setMembers(m); setLabels(l); })
+    Promise.all([api(`/projects/${id}`), api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`), api(`/projects/${id}/columns`)])
+      .then(([p, t, m, l, c]) => { setProject(p); setTasks(t); setMembers(m); setLabels(l); setColumns(c); })
       .catch((e) => setError(e.message));
   }, [id]);
 
@@ -80,8 +85,8 @@ export default function Board() {
       s.emit('project:join', Number(id));
       if (!first) {
         // Reconnected: catch up on anything missed while offline.
-        Promise.all([api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`)])
-          .then(([t, m, l]) => { setTasks(t); setMembers(m); setLabels(l); }).catch(() => {});
+        Promise.all([api(`/projects/${id}/tasks`), api(`/projects/${id}/members`), api(`/projects/${id}/labels`), api(`/projects/${id}/columns`)])
+          .then(([t, m, l, c]) => { setTasks(t); setMembers(m); setLabels(l); setColumns(c); }).catch(() => {});
       }
       first = false;
     };
@@ -89,6 +94,7 @@ export default function Board() {
     const handlers = {
       'task:created': ({ task }) => { setTasks((p) => (p.some((t) => t.id === task.id) ? p : [...p, task])); flash(task.id); },
       'task:updated': ({ task }) => { setTasks((p) => p.map((t) => (t.id === task.id ? { ...t, ...task } : t))); flash(task.id); },
+      'columns:changed': ({ columns: list }) => setColumns(list),
       'checklist:changed': ({ taskId, total, done }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, checklist_total: total, checklist_done: done } : t))),
       'task:labels': ({ taskId, label_ids }) => setTasks((p) => p.map((t) => (t.id === taskId ? { ...t, label_ids } : t))),
       'labels:changed': ({ labels: list }) => applyLabels(list),
@@ -160,14 +166,15 @@ export default function Board() {
     catch (err) { setTasks(prev); setError(err.message); }
   };
 
-  const drop = async (status, index) => {
-    if (dragId == null) return;
+  const drop = async (columnId, index) => {
+    const column = columns.find((c) => c.id === columnId);
+    if (dragId == null || !column) return;
     const prev = tasks;
-    setTasks(applyMove(tasks, dragId, status, index));
+    setTasks(applyMove(tasks, dragId, column, index));
     setDragId(null);
     setOverCol(null);
     try {
-      await api(`/tasks/${dragId}/move`, { method: 'POST', body: { status, index } });
+      await api(`/tasks/${dragId}/move`, { method: 'POST', body: { column_id: columnId, index } });
     } catch (err) { setTasks(prev); setError(err.message); }
   };
 
@@ -219,6 +226,7 @@ export default function Board() {
         <div className="head-right">
           <span className={`live ${live ? 'on' : ''}`} role="status">{live ? `Live · ${online.length} online` : 'Reconnecting…'}</span>
           <div className="head-btns">
+          <button className="team-btn" onClick={() => setShowExp((s) => !s)} aria-expanded={showExp}>Export</button>
           <button className="team-btn" onClick={() => setShowAct((s) => !s)} aria-expanded={showAct}>Activity</button>
           <button className="team-btn" onClick={() => setShowAi((s) => !s)} aria-expanded={showAi}>Assistant</button>
           <button className="team-btn" onClick={() => setShowGh((s) => !s)} aria-expanded={showGh}>GitHub</button>
@@ -231,6 +239,8 @@ export default function Board() {
           </div>
         </div>
       </div>
+
+      {showExp && <ExportPanel projectId={id} name={project.name} />}
 
       {showAct && <ActivityFeed projectId={id} onOpenTask={setOpenTaskId} />}
 
@@ -262,6 +272,7 @@ export default function Board() {
             </form>
           ) : <p className="muted">Only the owner can invite people.</p>}
           {isOwner && <InviteLinks projectId={id} />}
+          {isOwner && <ShareLink projectId={id} />}
           {inviteMsg && <p role="status" className={inviteMsg.ok ? 'ok' : 'error'}>{inviteMsg.text}</p>}
         </section>
       )}
@@ -320,8 +331,10 @@ export default function Board() {
 
       {view === 'board' && (
       <div className="board">
-        {COLUMNS.map(([status, label]) => {
-          const all = tasks.filter((t) => t.status === status).sort(byPos);
+        {columns.map((column) => {
+          const status = column.id;
+          const label = column.name;
+          const all = tasks.filter((t) => t.column_id === column.id).sort(byPos);
           const col = all.filter(matches);
           return (
             <section key={status}
@@ -329,7 +342,10 @@ export default function Board() {
               onDragOver={(e) => { e.preventDefault(); setOverCol(status); }}
               onDragLeave={() => setOverCol((c) => (c === status ? null : c))}
               onDrop={() => drop(status, all.filter((t) => t.id !== dragId).length)}>
-              <h2>{label} <span className="muted">{filtersOn ? `${col.length}/${all.length}` : col.length}</span></h2>
+              <div className="col-head">
+                <h2>{label} <span className="muted">{filtersOn ? `${col.length}/${all.length}` : col.length}</span></h2>
+                {isOwner && <ColumnMenu column={column} columns={columns} count={all.length} onColumns={setColumns} onTasks={setTasks} />}
+              </div>
               {col.length === 0 && <p className="muted empty">{filtersOn && all.length > 0 ? 'No tasks match the filters' : 'Drop a task here'}</p>}
               {col.map((t) => {
                 const a = memberById[t.assignee_id];
@@ -394,6 +410,7 @@ export default function Board() {
             </section>
           );
         })}
+        {isOwner && <AddColumn projectId={id} onColumns={setColumns} />}
       </div>
       )}
 

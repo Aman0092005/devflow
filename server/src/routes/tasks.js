@@ -6,11 +6,12 @@ import { notify } from '../notify.js';
 import { removeFiles } from '../uploads.js';
 import { logActivity } from '../activityLog.js';
 import { syncIssue } from '../githubSync.js';
+import { ensureColumns } from '../columns.js';
 
 const router = Router();
 const STATUSES = ['todo', 'in_progress', 'done'];
 const PRIORITIES = ['low', 'medium', 'high'];
-const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count,
+export const TASK_SELECT = `SELECT t.*, (SELECT COUNT(*)::int FROM task_attachments a WHERE a.task_id = t.id) AS attachment_count,
     (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count,
     COALESCE((SELECT array_agg(tl.label_id ORDER BY tl.label_id) FROM task_labels tl WHERE tl.task_id = t.id), '{}') AS label_ids,
     (SELECT COUNT(*)::int FROM task_checklist_items ci WHERE ci.task_id = t.id) AS checklist_total,
@@ -43,11 +44,12 @@ router.post('/projects/:projectId/tasks', async (req, res, next) => {
     if (!PRIORITIES.includes(priority)) return res.status(400).json({ error: 'Invalid priority.' });
     if (!validDay(due_date)) return res.status(400).json({ error: 'The due date must be a real date between 2000 and 2100.' });
     if (!(await getRole(projectId, req.userId))) return res.status(404).json({ error: 'Project not found.' });
+    await ensureColumns(projectId);
     if (assignee_id && !(await getRole(projectId, assignee_id)))
       return res.status(400).json({ error: 'You can only assign tasks to project members.' });
     const { rows } = await query(
-      `INSERT INTO tasks (project_id, title, description, priority, due_date, assignee_id, position)
-       VALUES ($1,$2,$3,$4,$5,$6,(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
+      `INSERT INTO tasks (project_id, title, description, priority, due_date, assignee_id, column_id, position)
+       VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM project_columns WHERE project_id=$1 AND stage='todo' ORDER BY position LIMIT 1),(SELECT COALESCE(MAX(position)+1,0) FROM tasks WHERE project_id=$1 AND status='todo'))
        RETURNING *`,
       [projectId, title.trim(), description, priority, due_date || null, assignee_id || null]
     );
@@ -92,32 +94,42 @@ router.patch('/tasks/:id', async (req, res, next) => {
 router.post('/tasks/:id/move', async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { status, index = 0 } = req.body;
-    if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+    const { index = 0 } = req.body;
     const task = await loadTask(req.params.id, req.userId);
     if (!task) return res.status(404).json({ error: 'Task not found.' });
+    // The target is a board column. (Older clients send just a stage, which maps to that stage's first column.)
+    let column = null;
+    if (req.body.column_id) {
+      column = (await query('SELECT id, name, stage FROM project_columns WHERE id=$1 AND project_id=$2', [req.body.column_id, task.project_id])).rows[0];
+    } else if (STATUSES.includes(req.body.status)) {
+      column = (await query('SELECT id, name, stage FROM project_columns WHERE project_id=$1 AND stage=$2 ORDER BY position LIMIT 1', [task.project_id, req.body.status])).rows[0];
+    }
+    if (!column) return res.status(400).json({ error: 'That column doesn’t exist.' });
+    const status = column.stage;
 
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'SELECT id FROM tasks WHERE project_id=$1 AND status=$2 AND id<>$3 ORDER BY position, id FOR UPDATE',
-      [task.project_id, status, task.id]
+      'SELECT id FROM tasks WHERE project_id=$1 AND column_id=$2 AND id<>$3 ORDER BY position, id FOR UPDATE',
+      [task.project_id, column.id, task.id]
     );
     const ids = rows.map((r) => r.id);
     ids.splice(Math.max(0, Math.min(index, ids.length)), 0, task.id);
     await client.query(
-      `UPDATE tasks SET status=$2, updated_at=now(),
+      `UPDATE tasks SET status=$2, column_id=$3, updated_at=now(),
          completed_at = CASE WHEN $2 = 'done' THEN COALESCE(completed_at, now()) ELSE NULL END
-       WHERE id=$1`, [task.id, status]);
+       WHERE id=$1`, [task.id, status, column.id]);
     for (let i = 0; i < ids.length; i++)
       await client.query('UPDATE tasks SET position=$2 WHERE id=$1', [ids[i], i]);
     await client.query('COMMIT');
     const all = await query(TASK_SELECT, [task.project_id]);
     emitToProject(task.project_id, 'tasks:reordered', { tasks: all.rows, movedId: task.id }, req.get('x-socket-id'));
-    if (status !== task.status)
-      logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_moved', taskId: task.id, meta: { title: task.title, from: task.status, to: status } });
+    if (column.id !== task.column_id) {
+      const from = (await query('SELECT name FROM project_columns WHERE id=$1', [task.column_id])).rows[0]?.name;
+      logActivity({ projectId: task.project_id, userId: req.userId, kind: 'task_moved', taskId: task.id, meta: { title: task.title, from: from || task.status, to: column.name } });
+    }
     if (task.github_ref && (status === 'done') !== (task.status === 'done')) syncIssue(task, status, req.userId); // closes/reopens the GitHub issue if sync is on
-    if (task.assignee_id && status !== task.status)
-      await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_moved', text: `moved “${task.title}” to ${LABELS[status]}` });
+    if (task.assignee_id && column.id !== task.column_id)
+      await notify({ userId: task.assignee_id, actorId: req.userId, projectId: task.project_id, taskId: task.id, type: 'task_moved', text: `moved “${task.title}” to ${column.name}` });
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});

@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics.jsx';
 import Integrations from './pages/Integrations.jsx';
 import Invite from './pages/Invite.jsx';
 import Settings from './pages/Settings.jsx';
+import SharedBoard from './pages/SharedBoard.jsx';
 import { FocusProvider } from './focus.jsx';
 import FocusPill from './FocusPill.jsx';
 import NotificationBell from './NotificationBell.jsx';
@@ -67,6 +68,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/invite/:token" element={<Invite />} />
+      <Route path="/shared/:token" element={<SharedBoard />} />
       <Route element={<Shell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

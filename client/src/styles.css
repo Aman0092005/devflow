@@ -420,3 +420,18 @@ pre.code code { white-space: pre; color: var(--text); }
 .goal-edit { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: .5rem; }
 .goal-edit-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .goal-edit-row input { width: 6rem; }
+
+/* Custom columns, sharing, export */
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: 1rem; align-items: start; overflow-x: auto; }
+.column { position: relative; }
+.col-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.col-head h2 { margin: 0; }
+.col-more { font-size: 1.3rem; line-height: 1; padding: 0 .25rem; }
+.col-menu { position: absolute; top: 2.4rem; right: .5rem; z-index: 20; width: 280px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .75rem; box-shadow: 0 12px 32px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: .6rem; }
+.col-menu p { margin: 0; }
+.col-add { border: 1px dashed var(--line); border-radius: 4px; background: transparent; color: var(--muted); font: inherit; padding: 1rem; min-height: 80px; cursor: pointer; }
+.col-add:hover { color: var(--text); border-color: var(--muted); }
+.col-add.open { background: var(--panel); color: var(--text); cursor: default; }
+.export-panel { margin: .5rem 0 1rem; max-width: 640px; }
+.export-panel p { margin: .25rem 0 .75rem; }
+.shared { max-width: 1400px; margin: 0 auto; }

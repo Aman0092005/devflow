@@ -32,6 +32,10 @@ router.post('/', async (req, res, next) => {
          VALUES ($1, $2, $3, COALESCE($4, '#f5d547')) RETURNING *
        ), m AS (
          INSERT INTO project_members (project_id, user_id, role) SELECT id, $1, 'owner' FROM p
+       ), c AS (
+         INSERT INTO project_columns (project_id, name, stage, position)
+         SELECT p.id, d.name, d.stage, d.pos FROM p
+         CROSS JOIN (VALUES ('To do','todo',0), ('In progress','in_progress',1), ('Done','done',2)) AS d(name, stage, pos)
        ) SELECT * FROM p`,
       [req.userId, name.trim(), description, color]
     );

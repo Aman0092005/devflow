@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { getTheme, setTheme } from '../theme.js';
+import { download } from '../download.js';
 
 const THEMES = [['dark', 'Dark'], ['light', 'Light'], ['system', 'Match my device']];
 
@@ -34,6 +35,13 @@ export default function Settings() {
       setPw({ current: '', next: '', confirm: '' });
       setPwMsg({ ok: true, text: 'Password changed.' });
     } catch (err) { setPwMsg({ ok: false, text: err.message }); }
+  };
+
+  const [exporting, setExporting] = useState('');
+  const [exportError, setExportError] = useState('');
+  const exportData = async (path, filename) => {
+    setExporting(filename); setExportError('');
+    try { await download(path, filename); } catch (err) { setExportError(err.message); } finally { setExporting(''); }
   };
 
   const pickTheme = (t) => { setTheme(t); setThemeState(t); };
@@ -70,6 +78,29 @@ export default function Settings() {
           <h2>Notifications</h2>
           <label className="check"><input type="checkbox" checked={reminders} onChange={toggleReminders} /> Due-date reminders</label>
           <p className="muted">Get a notification when a task is due tomorrow, due today, or overdue.</p>
+        </section>
+
+        <section className="panel">
+          <h2>Your data</h2>
+          <p className="muted">Download copies of what you’ve saved. Per-project exports are in each board’s Export button.</p>
+          <div className="stack">
+            {[
+              ['Everything (backup)', [['JSON', '/export/all', 'devflow-backup.json']]],
+              ['Notes', [['Markdown', '/export/notes?format=md', 'devflow-notes.md'], ['JSON', '/export/notes?format=json', 'devflow-notes.json']]],
+              ['DSA problems', [['CSV', '/export/dsa?format=csv', 'devflow-dsa-problems.csv'], ['JSON', '/export/dsa?format=json', 'devflow-dsa-problems.json']]],
+              ['Snippets', [['Markdown', '/export/snippets?format=md', 'devflow-snippets.md'], ['JSON', '/export/snippets?format=json', 'devflow-snippets.json']]],
+            ].map(([label, files]) => (
+              <div key={label} className="row-between">
+                <span>{label}</span>
+                <span className="snippet-actions">
+                  {files.map(([fmt, path, filename]) => (
+                    <button key={filename} className="btn ghost" disabled={!!exporting} onClick={() => exportData(path, filename)}>{exporting === filename ? 'Preparing…' : fmt}</button>
+                  ))}
+                </span>
+              </div>
+            ))}
+          </div>
+          {exportError && <p className="error" role="alert">{exportError}</p>}
         </section>
 
         <section className="panel">

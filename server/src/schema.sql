@@ -237,3 +237,32 @@ CREATE TABLE IF NOT EXISTS goals (
   target INT NOT NULL CHECK (target > 0),
   UNIQUE (user_id, metric)
 );
+
+-- Custom board columns. tasks.status stays the "stage" (todo / in_progress / done) so stats, reminders and
+-- completion keep working; column_id says which board column a task sits in.
+CREATE TABLE IF NOT EXISTS project_columns (
+  id SERIAL PRIMARY KEY,
+  project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  stage TEXT NOT NULL CHECK (stage IN ('todo','in_progress','done')),
+  position INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS columns_project_idx ON project_columns(project_id, position);
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS column_id INT REFERENCES project_columns(id) ON DELETE SET NULL;
+INSERT INTO project_columns (project_id, name, stage, position)
+  SELECT p.id, d.name, d.stage, d.pos FROM projects p
+  CROSS JOIN (VALUES ('To do','todo',0), ('In progress','in_progress',1), ('Done','done',2)) AS d(name, stage, pos)
+  WHERE NOT EXISTS (SELECT 1 FROM project_columns c WHERE c.project_id = p.id);
+UPDATE tasks t SET column_id = (SELECT c.id FROM project_columns c WHERE c.project_id = t.project_id AND c.stage = t.status ORDER BY c.position LIMIT 1)
+  WHERE t.column_id IS NULL;
+
+-- Read-only share links
+CREATE TABLE IF NOT EXISTS project_shares (
+  id SERIAL PRIMARY KEY,
+  project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  created_by INT REFERENCES users(id) ON DELETE SET NULL,
+  revoked BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
